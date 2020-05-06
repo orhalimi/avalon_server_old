@@ -100,13 +100,15 @@ var globalConfigPerNumOfPlayers = map[int]boardConfigurations{
 	13   : {8, 5, []int{4, 5, 5, 6, 5, 6, 6, 7}, []int{5, 5, 5, 7, 7, 7, 7, 3}},
 }
 
-var goodCh = [...]string {"Puck", "King-Arthur", "Seer", "Titanya", "Galahad", "Nimue", "Sir-Kay", "Good-Angel", "Percival", "Merlin"}
-
-var badCh = [...]string {"Morgana", "Assassin", "Mordred", "Oberon", "Bad-Angel"}
-
-var neutralCharacters = [...]string {"pack"}
-var goodCharacters = map[string]bool{
+var neutralCharacters = map[string]bool{
+	"Ginerva": true,
 	"Puck": true,
+	"Gawain": true,
+}
+
+
+var goodCharacters = map[string]bool{
+	"Viviana": true,
 	"King-Arthur": true,
 	"Seer" : true,
 	"Titanya" : true,
@@ -116,6 +118,18 @@ var goodCharacters = map[string]bool{
 	"Good-Angel" : true,
 	"Percival" : true,
 	"Merlin" : true,
+	"LoverY" : true,
+	"LoverB" : true,
+	"Prince-Claudin" : true,
+	"Nirlem" : true,
+	"Sir-Robin" : true,
+	"Pellinore": true,
+	"Lot": true,
+	"Cordana": true,
+	"The-Coward": true,
+	"Merlin-Apprentice": true,
+	"Lancelot-Good": true,
+	"Guinevere": true,
 }
 var badCharacters = map[string]bool{
 	"Morgana": true,
@@ -123,6 +137,11 @@ var badCharacters = map[string]bool{
 	"Mordred" : true,
 	"Oberon" : true,
 	"Bad-Angel" : true,
+	"King-Claudin": true,
+	"Polygraph": true,
+	"The-Questing-Beast": true,
+	"Accolon": true,
+	"Lancelot-Bad": true,
 }
 
 type QuestStats struct {
@@ -132,10 +151,13 @@ type QuestStats struct {
 	NumOfSuccess int `json:"successes,omitempty"`
 	NumOfReversal int `json:"reversals,omitempty"`
 	NumOfFailures int `json:"failures,omitempty"`
+	NumOfBeasts int `json:"beasts,omitempty"`
 }
 
 const (
 	TITANYA_FIRST_FAIL = iota
+	BEAST_FIRST_SUCCESS
+	HAS_TWO_LANCELOT
 )
 type QuestManager struct {
 	current int //counts from 0
@@ -157,9 +179,11 @@ type QuestArchiveItem struct {
 	SuggestedPlayers []string `json:"suggestedPlayers"`
 	IsSuggestionAccepted bool `json:"isSuggestionAccepted"`
 	IsSuggestionOver bool `json:"isSuggestionOver"`
+	IsSwitchLancelot bool `json:"switch"`
 	NumberOfReversal int `json:"numberOfReversal"`
 	NumberOfSuccesses int `json:"numberOfSuccesses"`
 	NumberOfFailures int `json:"numberOfFailures"`
+	NumberOfBeasts int `json:"numberOfBeasts"`
 	FinalResult int `json:"finalResult"`
 	Id float32 `json:"questId"` //e.g. 1.1 , 2 ..
 }
@@ -177,12 +201,17 @@ type BoardGame struct {
 
 	clientIdToPlayerName map[string]PlayerName
 
+	playersWithGoodCharacter []string //for vivian
+	playersWithBadCharacter []string //for vivian
+	Secrets map[string][]string
 	PlayerNames []PlayerName `json:"players,omitempty"`
 	PlayerToCharacter map[PlayerName]string
 	CharacterToPlayer map[string]PlayerName
 	Characters []string
 	quests QuestManager
 	archive []QuestArchiveItem
+	lancelotCards []int
+	lancelotCardsIndex int
 	suggestions QuestSuggestionsManager
 	votesForNextMission map[string]bool
 	isSuggestionPassed bool
@@ -195,8 +224,12 @@ type BoardGame struct {
 }
 
 var globalBoard  = BoardGame {
+	playersWithBadCharacter: make([]string, 0),
+	playersWithGoodCharacter: make([]string, 0),
 	clientIdToPlayerName: make(map[string]PlayerName),
 	QuestStage: 1,
+	lancelotCards: make([]int, 7),
+	Secrets: make(map[string][]string),
 	quests:QuestManager{
 		current:               0,
 		playersVotes:          make([][]int, 20),
@@ -300,7 +333,9 @@ func (c *Client) read() {
 			isGameCommand = true
 			var sg VoteForSuggestionMessage
 			json.Unmarshal(message, &sg)
+			log.Println("=====================>")
 			HandleSuggestionVote(sg.Content)
+			log.Println("<=====================")
 		} else if tp == "suggestion" {
 			isGameCommand = true
 			var sg SuggestMessage
@@ -317,6 +352,11 @@ func (c *Client) read() {
 			isGameCommand = true
 			globalMutex.Lock()
 			globalBoard = BoardGame {
+				QuestStage: 1,
+				lancelotCards: make([]int, 7),
+				playersWithBadCharacter: make([]string, 0),
+				playersWithGoodCharacter: make([]string, 0),
+				Secrets: make(map[string][]string),
 				clientIdToPlayerName: globalBoard.clientIdToPlayerName,
 				manager: globalBoard.manager,
 				PlayerNames:globalBoard.PlayerNames,
@@ -340,13 +380,15 @@ func (c *Client) read() {
 			for conn := range globalBoard.manager.clients {
 				gm := GetGameState(conn.id)
 				jsonMessage, _ := json.Marshal(&gm)
-				//fmt.Println(string(jsonMessage))
+				if globalBoard.PlayerToCharacter[PlayerName{conn.id}] == "Viviana" {
+					fmt.Println("VIVIANA")
+					fmt.Println(string(jsonMessage))
+				}
 				jsonMessage, _ = json.Marshal(&Message{Sender: c.id, Content: string(jsonMessage)})
 			select {
 			case conn.send <- jsonMessage:
 			default:
-			close(conn.send)
-			delete(globalBoard.manager.clients, conn)
+				globalBoard.manager.unregister <- conn
 			}
 			}
 
@@ -380,9 +422,27 @@ func removePlayer(slice []PlayerName, s int) []PlayerName {
 
 func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[string]bool, flags map[int]bool, current int, numOfPlayers int) []string {
 
+	if character == "Gawain" {
+		return []string{"Fail", "Success"}
+	}
+
 	if character == "King-Arthur" {
-		log.Println("king arthur has fail")
 		return []string{"Fail"}
+	}
+
+	if FlushQuest == getTypeOfLevel(current+1, numOfPlayers) {
+		if _, ok := badCharacters[character]; ok || character == "Ginerva" {
+			return []string{"Fail"}
+		} else {
+			return []string{"Success"}
+		}
+	}
+
+	if character == "Polygraph" {
+		return []string{"Fail"}
+	}
+	if character == "Lot" {
+		return []string{"Success"}
 	}
 	if character == "Nimue" {
 		if _, ok := questMembers["Merlin"]; ok {
@@ -392,18 +452,21 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 			}
 		}
 	}
+	if character == "The-Questing-Beast" {
+		if _, ok := flags[BEAST_FIRST_SUCCESS]; !ok {
+			return []string{"Success", "Beast"}
+		} else {
+			return []string{"Beast"}
+		}
+	}
 	if character == "Titanya" {
+		numOfExpectedQuests := globalConfigPerNumOfPlayers[numOfPlayers].NumOfQuests
+		if globalBoard.quests.unsuccessfulQuest+1 > numOfExpectedQuests/ 2 {
+			return []string{"Success"}
+		}
 		if _, ok := flags[TITANYA_FIRST_FAIL]; !ok {
 			log.Println("titanya  has fail")
 			return []string{"Fail"}
-		}
-	}
-
-	if FlushQuest == getTypeOfLevel(current+1, numOfPlayers) {
-		if _, ok := badCharacters[character]; ok {
-			return []string{"Fail"}
-		} else {
-			return []string{"Success"}
 		}
 	}
 
@@ -414,7 +477,7 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 
 	res = append(res, "Success")
 
-	if badCharacters[character] || character == "Puck" {
+	if badCharacters[character] || character == "Puck" || character == "Ginerva" {
 		res = append(res, "Fail")
 	}
 	log.Println(character, " has", res)
@@ -442,7 +505,6 @@ func (manager *ClientManager) start() {
 				jsonMessage, _ := json.Marshal(&Message{Content: "/A new socket has connected."})
 				manager.send(jsonMessage, conn)
 		}
-
 		case conn := <-manager.unregister:
 			if _, ok := manager.clients[conn]; ok {
 				globalMutex.Lock()
@@ -510,6 +572,168 @@ type VoteForJourneyMessage struct {
 
 }
 
+func GetSecretsFromPlayerName(player PlayerName) []string {
+
+	secrets := make([]string, 0)
+	if player.Player == "" {
+		return nil
+	}
+
+	character := globalBoard.PlayerToCharacter[player]
+
+	if character == "Merlin" {
+		for k, v := range globalBoard.CharacterToPlayer {
+
+			if _, ok := badCharacters[k]; ok && k != "Mordred" && k != "Accolon" {
+				if k == "Oberon" {
+					secrets = append(secrets, v.Player + " is Oberon")
+				} else {
+					secrets = append(secrets, v.Player + " is bad")
+				}
+			}
+			if k == "Lot" {
+				secrets = append(secrets, v.Player + " is Lot")
+			}
+			if k == "Ginerva" {
+				secrets = append(secrets, v.Player + " is bad")
+			}
+			if k == "Sir-Kay" {
+				secrets = append(secrets, v.Player + " is bad")
+			}
+			if k == "Gawain" {
+				secrets = append(secrets, v.Player + " is Gawain")
+			}
+		}
+	}
+	if _, ok := goodCharacters[character]; ok && character != "Nirlem" && character != "Lot" {
+		if player, ok := globalBoard.CharacterToPlayer["Nirlem"]; ok && character != "Lancelot-Good" {
+			secrets = append(secrets, player.Player + " is Nirlem")
+		}
+	}
+	if character == "Guinevere" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Lancelot-Good" {
+				secrets = append(secrets, v.Player + " is Lancelot")
+			}
+			if k == "Lancelot-Bad" {
+				secrets = append(secrets, v.Player + " is Lancelot")
+			}
+		}
+	}
+	if character == "LoverB" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "LoverY" {
+				secrets = append(secrets, v.Player + " is LoverY")
+			}
+		}
+	}
+	if character == "Prince-Claudin" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "King-Claudin" {
+				secrets = append(secrets, v.Player + " is King-Claudin")
+			}
+		}
+	}
+
+	if character == "Merlin-Apprentice" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Percival" {
+				secrets = append(secrets, v.Player + " is Percival/Assasin")
+			}
+			if k == "Assassin" {
+				secrets = append(secrets, v.Player + " is Percival/Assassin")
+			}
+		}
+	}
+	if character == "LoverY" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "LoverB" {
+				secrets = append(secrets, v.Player + " is LoverB")
+			}
+		}
+	}
+	if character == "Lot" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if _, ok := badCharacters[k]; ok && k != character && k != "Oberon" && k != "Accolon" {
+				if k == "Polygraph" {
+					secrets = append(secrets, v.Player+" is polygraph")
+				} else {
+					secrets = append(secrets, v.Player+" is bad")
+				}
+			}
+		}
+	}
+	if character == "Nimue" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Galahad" {
+				secrets = append(secrets, v.Player + " is Galahad")
+			}
+			if k == "Merlin" {
+				secrets = append(secrets, v.Player + " is Merlin")
+			}
+		}
+	}
+	if character == "Morgana" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Gawain" {
+				secrets = append(secrets, v.Player + " is Gawain")
+			}
+		}
+	}
+	if character == "Percival" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Morgana" {
+				if _, ok := globalBoard.CharacterToPlayer["Merlin"]; !ok {
+					secrets = append(secrets, v.Player + " is Morgana/Viviana")
+				} else {
+					secrets = append(secrets, v.Player+" is Morgana/Merlin")
+				}
+			}
+			if k == "Merlin" {
+				secrets = append(secrets, v.Player + " is Morgana/Merlin")
+			}
+			if k == "Viviana" {
+				if _, ok := globalBoard.CharacterToPlayer["Merlin"]; !ok {
+					secrets = append(secrets, v.Player + " is Morgana/Viviana")
+				}
+			}
+
+		}
+	}
+	if _, ok := badCharacters[character] ; ok && character != "Oberon" && character != "Accolon" && character != "Lancelot-Bad" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if _, ok := badCharacters[k]; ok && k != character && k != "Oberon" && k != "Accolon" {
+				if k == "Polygraph" {
+					secrets = append(secrets, v.Player+" is polygraph")
+				} else {
+					secrets = append(secrets, v.Player+" is bad")
+				}
+			}
+		}
+	}
+
+	if character == "The-Questing-Beast" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if k == "Pellinore" {
+				secrets = append(secrets, v.Player + " is Pellinore")
+			}
+		}
+	}
+
+	if character == "Gawain" {
+		for k, v := range globalBoard.CharacterToPlayer {
+			if _, ok := badCharacters[k]; ok && k != character && k != "Oberon" && k != "Accolon" {
+					secrets = append(secrets, v.Player+" is bad/merlin/percival")
+			}
+			if k == "Percival" || k == "Merlin" || k == "Nirlem" || k == "Viviana" {
+				secrets = append(secrets, v.Player+", ")
+			}
+		}
+	}
+
+	return secrets
+}
+
 func StartGameHandler(newGameConfig []Ch) {
 	fmt.Println("newGameConfig", newGameConfig)
 	globalMutex.Lock()
@@ -518,6 +742,12 @@ func StartGameHandler(newGameConfig []Ch) {
 	numOfPlayers := len(globalBoard.PlayerNames)
 	requiredBads := globalConfigPerNumOfPlayers[numOfPlayers].NumOfBadCharacters
 
+	globalBoard.lancelotCards = []int{0,0,1,0,1,0,0}
+	rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Shuffle(len(globalBoard.lancelotCards), func(i, j int) {
+		globalBoard.lancelotCards[i], globalBoard.lancelotCards[j] = globalBoard.lancelotCards[j], globalBoard.lancelotCards[i]
+	})
+	log.Println("===========", globalBoard.lancelotCards)
 	var numOfBads int
 	var numOfGood int
 	for _, v := range newGameConfig {
@@ -526,6 +756,13 @@ func StartGameHandler(newGameConfig []Ch) {
 				numOfBads++
 			} else if goodCharacters[v.Name] == true {
 				numOfGood++
+			} else if v.Name == "Puck" {
+				numOfGood++
+			} else if v.Name == "Ginerva" || v.Name == "Gawain" {
+				numOfBads++
+			} else {
+				globalMutex.Unlock()
+				return
 			}
 
 		}
@@ -570,12 +807,24 @@ func StartGameHandler(newGameConfig []Ch) {
 	suggesterVetoIn := (globalBoard.suggestions.suggesterIndex+numOfUnsuccesfulRetries-1) % len(globalBoard.PlayerNames)
 	globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[suggesterVetoIn].Player
 
+	for _, player := range globalBoard.PlayerNames {
+		globalBoard.Secrets[player.Player] = GetSecretsFromPlayerName(player)
+		log.Println(player, "      =     ", globalBoard.Secrets[player.Player])
+	}
+
+	if _, ok := globalBoard.CharacterToPlayer["Lancelot-Good"]; ok {
+		if _, ok := globalBoard.CharacterToPlayer["Lancelot-Bad"]; ok {
+			globalBoard.quests.Flags[HAS_TWO_LANCELOT] = true
+		}
+	}
 	globalMutex.Unlock()
 }
 
 type SecretResponse struct {
 	Character string `json:"character,omitempty"`
 	Secrets []string `json:"secrets,omitempty"`
+	PlayersWithGoodCharacter []string `json:"goodplayers,omitempty"`//for vivian
+	PlayersWithBadCharacter []string `json:"badplayers,omitempty"` //for vivian
 }
 
 func GetNightSecretsFromPlayerName(player PlayerName) SecretResponse {
@@ -587,43 +836,16 @@ func GetNightSecretsFromPlayerName(player PlayerName) SecretResponse {
 
 	character := globalBoard.PlayerToCharacter[player]
 	response.Character = character
-	if character == "Merlin" {
-		for k, v := range globalBoard.CharacterToPlayer {
-			fmt.Println(k, "and ", badCharacters[k])
-			if _, ok := badCharacters[k]; ok && k != "Mordred" {
-				response.Secrets = append(response.Secrets, v.Player + " is bad")
-			}
-			if k == "Sir-Kay" {
-				response.Secrets = append(response.Secrets, v.Player + " is bad")
-			}
-		}
-	}
-	if character == "Nimue" {
-		for k, v := range globalBoard.CharacterToPlayer {
-			if k == "Galahad" {
-				response.Secrets = append(response.Secrets, v.Player + " is Galahad")
-			}
-			if k == "Merlin" {
-				response.Secrets = append(response.Secrets, v.Player + " is Merlin")
-			}
-		}
-	}
-	if character == "Percival" {
-		for k, v := range globalBoard.CharacterToPlayer {
-			if k == "Morgana" {
-				response.Secrets = append(response.Secrets, v.Player + " is Morgana/Merlin")
-			}
-			if k == "Merlin" {
-				response.Secrets = append(response.Secrets, v.Player + " is Morgana/Merlin")
-			}
-		}
-	}
-	if _, ok := badCharacters[character] ; ok && character != "Oberon" {
-		for k, v := range globalBoard.CharacterToPlayer {
-			if _, ok := badCharacters[k]; ok && k != character && k != "Oberon" {
-				response.Secrets = append(response.Secrets, v.Player+" is bad")
-			}
-		}
+	if character == "Viviana" {
+		log.Println("#########################################")
+		log.Println(globalBoard.playersWithBadCharacter)
+		log.Println(globalBoard.playersWithGoodCharacter)
+		response.PlayersWithBadCharacter = globalBoard.playersWithBadCharacter
+		response.PlayersWithGoodCharacter = globalBoard.playersWithGoodCharacter
+		log.Println(response.PlayersWithBadCharacter )
+		log.Println(response.PlayersWithGoodCharacter)
+	} else if secrets, ok := globalBoard.Secrets[player.Player]; ok {
+		return SecretResponse{Character: character, Secrets: secrets}
 	}
 	return response
 }
@@ -710,6 +932,48 @@ func HandleNewSuggest(pl ListOfSuggestions) {
 		for _, player := range globalBoard.PlayerNames {
 			allPlayers = append(allPlayers, player.Player)
 		}
+
+		if "Sir-Kay" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+			globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+		} else if "Mordred" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+			globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+		} else if "Lot" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+			globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			vivianaSecrets := make([]string, 1)
+			vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Lot")
+			globalBoard.Secrets["Viviana"] = vivianaSecrets
+		} else if "Gawain" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+			globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			vivianaSecrets := globalBoard.Secrets["Viviana"]
+			if vivianaSecrets == nil {
+				vivianaSecrets = make([]string, 1)
+			}
+			vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Gawain")
+			globalBoard.Secrets["Viviana"] = vivianaSecrets
+		} else if "Ginerva" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+			globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			vivianaSecrets := globalBoard.Secrets["Viviana"]
+			if vivianaSecrets == nil {
+				vivianaSecrets = make([]string, 1)
+			}
+			vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Gawain")
+			globalBoard.Secrets["Viviana"] = vivianaSecrets
+		} else if _, isSuggesterBadCharacter := badCharacters[globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]]]; isSuggesterBadCharacter {
+			log.Println("suggester is bad")
+			globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+		} else {
+			log.Println("suggester is good")
+			globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+		}
+
+
+
+
+
+
+
+
+
 		newEntry.IsSuggestionAccepted = true
 		newEntry.IsSuggestionOver = true
 		newEntry.PlayersVotedYes = allPlayers
@@ -808,10 +1072,18 @@ func HandleJourneyVote(vote VoteForJourney) {
 		globalBoard.quests.Flags[TITANYA_FIRST_FAIL] = true
 	}
 
+	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == "The-Questing-Beast" && vote.Vote==1 {
+		globalBoard.quests.Flags[BEAST_FIRST_SUCCESS] = true
+	}
+
+	origVote := vote.Vote
+	if origVote == 3 {
+		origVote = 0
+	}
 	log.Println(vote.PlayerName, " voted ", vote.Vote)
 	globalBoard.quests.playerVotedForCurrentQuest = append(globalBoard.quests.playerVotedForCurrentQuest, vote.PlayerName)
-	globalBoard.quests.playerVotedForCurrent[vote.PlayerName] = vote.Vote
-	mp := append(globalBoard.quests.playersVotes[current], vote.Vote)
+	globalBoard.quests.playerVotedForCurrent[vote.PlayerName] = origVote
+	mp := append(globalBoard.quests.playersVotes[current], origVote)
 	requiredVotes := globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].PlayersPerLevel[current]
 
 	res := globalBoard.quests.results[current+1]
@@ -823,6 +1095,9 @@ func HandleJourneyVote(vote VoteForJourney) {
 	} else if vote.Vote == 1 {
 		res.NumOfSuccess++
 		curEntry.NumberOfSuccesses++
+	} else if vote.Vote == 3 {
+		res.NumOfBeasts++
+		curEntry.NumberOfBeasts++
 	} else {
 		res.NumOfReversal++
 		curEntry.NumberOfReversal++
@@ -881,9 +1156,39 @@ func HandleJourneyVote(vote VoteForJourney) {
 		numOfExpectedQuests := globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].NumOfQuests
 		if globalBoard.quests.successfulQuest > numOfExpectedQuests/ 2 {
 			globalBoard.State = VictoryForGood
-		} else if globalBoard.quests.unsuccessfulQuest > numOfExpectedQuests/ 2 {
+		} else if globalBoard.quests.unsuccessfulQuest > numOfExpectedQuests/ 2 || (numOfExpectedQuests == 4 && globalBoard.quests.unsuccessfulQuest == numOfExpectedQuests/ 2) {
 			globalBoard.State = VictoryForBad
 		} else {
+
+
+			if _, ok := globalBoard.quests.Flags[HAS_TWO_LANCELOT]; ok {
+				//random number to decide if lancelots switch
+				isSwitchLancelots := globalBoard.lancelotCards[globalBoard.lancelotCardsIndex]
+				globalBoard.lancelotCardsIndex = (globalBoard.lancelotCardsIndex+1) % len(globalBoard.lancelotCards)
+				if isSwitchLancelots==1 {
+					lanBad := globalBoard.CharacterToPlayer["Lancelot-Bad"]
+					lanGood := globalBoard.CharacterToPlayer["Lancelot-Good"]
+					globalBoard.CharacterToPlayer["Lancelot-Bad"] = lanGood
+					globalBoard.CharacterToPlayer["Lancelot-Good"] = lanBad
+					globalBoard.PlayerToCharacter[lanBad] = "Lancelot-Good"
+					globalBoard.PlayerToCharacter[lanGood] = "Lancelot-Bad"
+					curEntry.IsSwitchLancelot = true
+					for i, pl := range globalBoard.playersWithBadCharacter {
+						if pl == lanBad.Player {
+							globalBoard.playersWithBadCharacter[i] = lanGood.Player
+							break
+						}
+					}
+					for i, pl := range globalBoard.playersWithGoodCharacter {
+						if pl == lanGood.Player {
+							globalBoard.playersWithGoodCharacter[i] = lanBad.Player
+							break
+						}
+					}
+				}
+			}
+
+
 			globalBoard.State = ShowJorneyResult
 			globalBoard.votesForNextMission = make(map[string]bool)
 		}
@@ -985,12 +1290,63 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 	if len(globalBoard.votesForNextMission) == len(globalBoard.PlayerNames) { //last vote
 		curEntry.IsSuggestionOver = true
+
+		numOfQuests := globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].NumOfQuests
+		if globalBoard.quests.current+1 == numOfQuests { //last quest in game
+			if gawainPlayer, ok := globalBoard.CharacterToPlayer["Gawain"]; ok {
+				if gaVote, ok := globalBoard.votesForNextMission[gawainPlayer.Player]; ok {
+					if gaVote {
+						globalBoard.isSuggestionGood++
+					} else {
+						globalBoard.isSuggestionBad++
+					}
+				}
+			}
+		}
+
 		if globalBoard.isSuggestionGood > globalBoard.isSuggestionBad {
 			globalBoard.State = JorneyVoting
 			globalBoard.suggestions.unsuccessfulRetries = 0
 			curEntry.IsSuggestionAccepted = true
 			globalBoard.QuestStage += 0.01
 			globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
+
+			//for vivian
+			if "Sir-Kay" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			} else if "Mordred" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+				globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			} else if "Lot" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+				vivianaSecrets := globalBoard.Secrets["Viviana"]
+				if vivianaSecrets == nil {
+					vivianaSecrets = make([]string, 1)
+				}
+				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Lot")
+				globalBoard.Secrets["Viviana"] = vivianaSecrets
+			} else if "Gawain" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+				vivianaSecrets := globalBoard.Secrets["Viviana"]
+				if vivianaSecrets == nil {
+					vivianaSecrets = make([]string, 1)
+				}
+				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Gawain")
+				globalBoard.Secrets["Viviana"] = vivianaSecrets
+			} else if "Ginerva" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]] {
+				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+				vivianaSecrets := globalBoard.Secrets["Viviana"]
+				if vivianaSecrets == nil {
+					vivianaSecrets = make([]string, 1)
+				}
+				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player + " is Gawain")
+				globalBoard.Secrets["Viviana"] = vivianaSecrets
+			} else if _, isSuggesterBadCharacter := badCharacters[globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)]]]; isSuggesterBadCharacter {
+				log.Println("suggester is bad")
+				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			} else {
+				log.Println("suggester is good")
+				globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player)
+			}
 
 			numOfUnsuccesfulRetries:= globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].RetriesPerLevel[globalBoard.quests.current]
 			suggesterVetoIn := (globalBoard.suggestions.suggesterIndex+1+numOfUnsuccesfulRetries) % len(globalBoard.PlayerNames)
@@ -1032,6 +1388,7 @@ func wsPage(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(res, "Request failed!", http.StatusUnauthorized)
+		return
 	}
 
 	data := claims.Claims.(*JWTData)
@@ -1074,7 +1431,7 @@ func main() {
 	go globalBoard.manager.start()
 	router := mux.NewRouter()
 	router.HandleFunc("/ws", wsPage).Methods("GET")
-	router.HandleFunc("/register", userRouter.createUserHandler).Methods("PUT", "OPTIONS", "POST")
+	router.HandleFunc("/register2", userRouter.createUserHandler).Methods("PUT", "OPTIONS", "POST")
 	router.HandleFunc("/login", userRouter.login).Methods("POST", "OPTIONS")
 	log.Fatal(http.ListenAndServe(":12345", cors.AllowAll().Handler(router)))
 }
@@ -1133,7 +1490,7 @@ func (ur *userRouter) login(w http.ResponseWriter, r *http.Request) {
 	if compareError == nil {
 		claims := JWTData{
 			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: time.Now().Add(time.Hour*7).Unix(),
+				ExpiresAt: time.Now().Add(time.Hour*300).Unix(),
 			},
 
 			CustomClaims: map[string]string{
