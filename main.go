@@ -49,9 +49,13 @@ type Message struct {
 type Ch struct {
 	Name  string `json:"name"`
 	Checked bool `json:"checked"`
-
+	Assassin bool  `json:"assassin"`
 }
 
+type PlayerNameWithCharacter struct {
+	Player string `json:"player,omitempty"`
+	Character string `json:"character,omitempty"`
+}
 
 type PlayerName struct {
 	Player string `json:"player,omitempty"`
@@ -65,6 +69,9 @@ const ( //game state
 	ShowJorneyResult     = 4
 	VictoryForGood     = 5
 	VictoryForBad     = 6
+	MurdersAfterGoodVictory     = 7
+	MurdersAfterBadVictory     = 8
+	VictoryForGawain    = 9
 )
 
 const (
@@ -118,8 +125,8 @@ var goodCharacters = map[string]bool{
 	"Good-Angel" : true,
 	"Percival" : true,
 	"Merlin" : true,
-	"LoverY" : true,
-	"LoverB" : true,
+	"Tristan" : true,
+	"Iseult" : true,
 	"Prince-Claudin" : true,
 	"Nirlem" : true,
 	"Sir-Robin" : true,
@@ -130,6 +137,8 @@ var goodCharacters = map[string]bool{
 	"Merlin-Apprentice": true,
 	"Lancelot-Good": true,
 	"Guinevere": true,
+	"Galaad":true,
+	"Balain" :true,
 }
 var badCharacters = map[string]bool{
 	"Morgana": true,
@@ -142,6 +151,8 @@ var badCharacters = map[string]bool{
 	"The-Questing-Beast": true,
 	"Accolon": true,
 	"Lancelot-Bad": true,
+	"Queen-Mab": true,
+	"Balin": true,
 }
 
 type QuestStats struct {
@@ -158,6 +169,8 @@ const (
 	TITANYA_FIRST_FAIL = iota
 	BEAST_FIRST_SUCCESS
 	HAS_TWO_LANCELOT
+	HAS_ONLY_GOOD_LANCELOT
+	HAS_ONLY_BAD_LANCELOT
 )
 type QuestManager struct {
 	current int //counts from 0
@@ -197,6 +210,44 @@ type QuestSuggestionsManager struct {
 	SuggestedCharacters map[string]bool
 }
 
+const (
+	ALL_GOOD = "Good"
+	ALL_BAD = "Bad"
+)
+type Murder struct {
+	target          []string
+	TargetCharacters  []string `json:"target"`
+	By              string `json:"by"`
+	byCharacter    string
+	stopIfSucceeded bool
+	StateAfterSuccess	int
+}
+
+type MurderInfo struct {
+	by              []string
+}
+
+type MurderResult struct {
+	target          []string
+	targetCharacter  []string
+	by              string
+	byCharacter    string
+	success    bool
+}
+
+type MurderItem struct{
+	targetPlayer string `json:"target"`
+	byPlayer string `json:"by"`
+}
+
+type MurderSummary struct {
+	target          []string
+	targetCharacter  []string
+	by              string
+	byCharacter    string
+	success    bool
+}
+
 type BoardGame struct {
 
 	clientIdToPlayerName map[string]PlayerName
@@ -208,6 +259,8 @@ type BoardGame struct {
 	PlayerToCharacter map[PlayerName]string
 	CharacterToPlayer map[string]PlayerName
 	Characters []string
+	PendingMurders []Murder
+	PlayerToMurderInfo map[string]MurderInfo
 	quests QuestManager
 	archive []QuestArchiveItem
 	lancelotCards []int
@@ -230,6 +283,7 @@ var globalBoard  = BoardGame {
 	QuestStage: 1,
 	lancelotCards: make([]int, 7),
 	Secrets: make(map[string][]string),
+	PlayerToMurderInfo: make(map[string]MurderInfo),
 	quests:QuestManager{
 		current:               0,
 		playersVotes:          make([][]int, 20),
@@ -329,6 +383,11 @@ func (c *Client) read() {
 			var sg StartGameMessage
 			json.Unmarshal(message, &sg)
 			StartGameHandler(sg.Content)
+		} else if tp == "murder" {
+			isGameCommand = true
+			var sg MurderMessage
+			json.Unmarshal(message, &sg)
+			HandleMurder(sg.Content)
 		} else if tp == "vote_for_suggestion" {
 			isGameCommand = true
 			var sg VoteForSuggestionMessage
@@ -359,6 +418,7 @@ func (c *Client) read() {
 				Secrets: make(map[string][]string),
 				clientIdToPlayerName: globalBoard.clientIdToPlayerName,
 				manager: globalBoard.manager,
+				PlayerToMurderInfo: make(map[string]MurderInfo),
 				PlayerNames:globalBoard.PlayerNames,
 				quests: QuestManager{
 					current:               0,
@@ -384,6 +444,7 @@ func (c *Client) read() {
 					fmt.Println("VIVIANA")
 					fmt.Println(string(jsonMessage))
 				}
+				fmt.Println(jsonMessage)
 				jsonMessage, _ = json.Marshal(&Message{Sender: c.id, Content: string(jsonMessage)})
 			select {
 			case conn.send <- jsonMessage:
@@ -496,7 +557,7 @@ func (manager *ClientManager) start() {
 						found = true
 					}
 				}
-				if !found {
+				if !found && globalBoard.State == NotStarted {
 					globalBoard.PlayerNames = append(globalBoard.PlayerNames, PlayerName{conn.id})
 				}
 
@@ -554,6 +615,11 @@ type VoteForSuggestionMessage struct {
 
 }
 
+type MurderMsg struct {
+	Selection []PlayerName2 `json:"all"`
+
+}
+
 type VoteForSuggestion struct {
 	PlayerName string `json:"playerName"`
 	Vote bool `json:"vote"`
@@ -566,10 +632,112 @@ type SuggestMessage struct {
 
 }
 
+type MurderMessage struct {
+	Tp string `json:"type"`
+	Content []PlayerName2 `json:"content"`
+
+}
+
 type VoteForJourneyMessage struct {
 	Tp string `json:"type"`
 	Content VoteForJourney `json:"content"`
 
+}
+
+func getAllBadsChars() []string {
+	allBads := make([]string, 0)
+	for _, player := range globalBoard.PlayerNames {
+		if ch, ok := globalBoard.PlayerToCharacter[player]; ok {
+			if _, ok := badCharacters[ch]; ok {
+				allBads = append(allBads, ch)
+			}
+		}
+	}
+	return allBads
+}
+
+func getAllBads() []string {
+	allBads := make([]string, 0)
+	for _, player := range globalBoard.PlayerNames {
+		if ch, ok := globalBoard.PlayerToCharacter[player]; ok {
+			if _, ok := badCharacters[ch]; ok {
+				allBads = append(allBads, player.Player)
+			}
+		}
+	}
+	return allBads
+}
+
+func GetMurdersAfterGoodsWins() ([]Murder, bool) {
+
+	murders := make([]Murder, 0)
+
+	if beast, isKingClaudinExists := globalBoard.CharacterToPlayer["The-Questing-Beast"]; isKingClaudinExists  {
+		if pellinore, isPrinceClaudinExists := globalBoard.CharacterToPlayer["Pellinore"]; isPrinceClaudinExists  {
+				m := Murder{target:[]string{beast.Player}, TargetCharacters:[]string{"The-Questing-Beast"}, By:pellinore.Player}
+				murders = append(murders, m)
+			}
+	}
+
+	if _, isKingClaudinExists := globalBoard.CharacterToPlayer["King-Claudin"]; isKingClaudinExists  {
+		if _, isPrinceClaudinExists := globalBoard.CharacterToPlayer["Prince-Claudin"]; isPrinceClaudinExists  {
+			if percivalPlayerName, isPercivalExists := globalBoard.CharacterToPlayer["Percival"]; isPercivalExists  {
+				m := Murder{target:getAllBads(), TargetCharacters:getAllBadsChars(), By:percivalPlayerName.Player, StateAfterSuccess:VictoryForGood}
+				murders = append(murders, m)
+			} else if arthurPlayerName, isArthurExists := globalBoard.CharacterToPlayer["King-Arthur"]; isArthurExists  {
+				m := Murder{target:getAllBads(), TargetCharacters:getAllBadsChars(), By:arthurPlayerName.Player, StateAfterSuccess:VictoryForGood}
+				murders = append(murders, m)
+			}
+		}
+	}
+
+	merlinAppenticePlayerName, ok := globalBoard.CharacterToPlayer["Merlin-Apprentice"]
+	initSlice := make([]string, 0)
+	targetSlice := make([]string, 0)
+	if ok {
+		initSlice = append(initSlice, "Merlin-Apprentice")
+		targetSlice = append(targetSlice, merlinAppenticePlayerName.Player)
+	}
+	assassin := globalBoard.CharacterToPlayer["Assassin"]
+	if merlinPlayerName, isMerlinExists := globalBoard.CharacterToPlayer["Merlin"]; isMerlinExists  {
+		m := Murder{target:append(targetSlice, merlinPlayerName.Player), TargetCharacters:append(initSlice, "Merlin"), By:assassin.Player, StateAfterSuccess:VictoryForBad}
+		murders = append(murders, m)
+	} else if vivianPlayerName, isVivianExists := globalBoard.CharacterToPlayer["Viviana"]; isVivianExists  {
+		m := Murder{target:append(targetSlice, vivianPlayerName.Player), TargetCharacters:append(initSlice, "Viviana"), By:assassin.Player, StateAfterSuccess:VictoryForBad}
+		murders = append(murders, m)
+	} else if nirlemPlayerName, isNirlemExists := globalBoard.CharacterToPlayer["Nilrem"]; isNirlemExists  {
+		m := Murder{target:append(targetSlice, nirlemPlayerName.Player), TargetCharacters:append(initSlice, "Nilrem"), By:assassin.Player, StateAfterSuccess:VictoryForBad}
+		murders = append(murders, m)
+	}
+
+	return murders, len(murders) > 0
+}
+
+
+func GetMurdersAfterBadsWins() ([]Murder, bool) {
+
+	murders := make([]Murder, 0)
+
+	if beast, isKingClaudinExists := globalBoard.CharacterToPlayer["The-Questing-Beast"]; isKingClaudinExists  {
+		if pellinore, isPrinceClaudinExists := globalBoard.CharacterToPlayer["Pellinore"]; isPrinceClaudinExists  {
+			m := Murder{target:[]string{beast.Player}, TargetCharacters:[]string{"The-Questing-Beast"}, By:pellinore.Player}
+			murders = append(murders, m)
+		}
+	}
+
+	if cordana, isKingClaudinExists := globalBoard.CharacterToPlayer["Cordana"]; isKingClaudinExists  {
+		if mordred, isPrinceClaudinExists := globalBoard.CharacterToPlayer["Mordred"]; isPrinceClaudinExists  {
+				m := Murder{target:[]string{mordred.Player}, TargetCharacters:[]string{"Cordana"}, By:cordana.Player, StateAfterSuccess:MurdersAfterGoodVictory}
+				murders = append(murders, m)
+			}
+	}
+
+	if kingArthur, isKingArthurExists := globalBoard.CharacterToPlayer["King-Arthur"]; isKingArthurExists  {
+		m := Murder{target:getAllBads(), TargetCharacters:getAllBadsChars(), By:kingArthur.Player, StateAfterSuccess:VictoryForGood}
+		murders = append(murders, m)
+	}
+
+	return murders, len(murders) > 0
 }
 
 func GetSecretsFromPlayerName(player PlayerName) []string {
@@ -620,10 +788,10 @@ func GetSecretsFromPlayerName(player PlayerName) []string {
 			}
 		}
 	}
-	if character == "LoverB" {
+	if character == "Iseult" {
 		for k, v := range globalBoard.CharacterToPlayer {
-			if k == "LoverY" {
-				secrets = append(secrets, v.Player + " is LoverY")
+			if k == "Tristan" {
+				secrets = append(secrets, v.Player + " is Tristan")
 			}
 		}
 	}
@@ -645,10 +813,10 @@ func GetSecretsFromPlayerName(player PlayerName) []string {
 			}
 		}
 	}
-	if character == "LoverY" {
+	if character == "Tristan" {
 		for k, v := range globalBoard.CharacterToPlayer {
-			if k == "LoverB" {
-				secrets = append(secrets, v.Player + " is LoverB")
+			if k == "Iseult" {
+				secrets = append(secrets, v.Player + " is Iseult")
 			}
 		}
 	}
@@ -780,7 +948,10 @@ func StartGameHandler(newGameConfig []Ch) {
 		return
 	}
 
-	chosenCharacters = assignCharactersToRegisteredPlayers(newGameConfig, chosenCharacters)
+	chosenCharacters, assassinPlayer := assignCharactersToRegisteredPlayers(newGameConfig, chosenCharacters)
+	if chosenCharacters == nil {
+		log.Fatal("No assassin chosen")
+	}
 
 	rand.Seed(int64(time.Now().Nanosecond()))
 	rand.Shuffle(len(chosenCharacters), func(i, j int) {
@@ -812,11 +983,17 @@ func StartGameHandler(newGameConfig []Ch) {
 		log.Println(player, "      =     ", globalBoard.Secrets[player.Player])
 	}
 
-	if _, ok := globalBoard.CharacterToPlayer["Lancelot-Good"]; ok {
-		if _, ok := globalBoard.CharacterToPlayer["Lancelot-Bad"]; ok {
-			globalBoard.quests.Flags[HAS_TWO_LANCELOT] = true
-		}
+	_, hasBadLancelot := globalBoard.CharacterToPlayer["Lancelot-Bad"]
+	_, hasGoodLancelot := globalBoard.CharacterToPlayer["Lancelot-Good"]
+	if hasBadLancelot && hasGoodLancelot {
+		globalBoard.quests.Flags[HAS_TWO_LANCELOT] = true
+	} else if hasBadLancelot {
+		globalBoard.quests.Flags[HAS_ONLY_BAD_LANCELOT] = true
+	} else if hasGoodLancelot {
+		globalBoard.quests.Flags[HAS_ONLY_GOOD_LANCELOT] = true
 	}
+
+	globalBoard.CharacterToPlayer["Assassin"] = PlayerName{assassinPlayer}
 	globalMutex.Unlock()
 }
 
@@ -850,12 +1027,17 @@ func GetNightSecretsFromPlayerName(player PlayerName) SecretResponse {
 	return response
 }
 
-func assignCharactersToRegisteredPlayers(newGameConfig []Ch, chosenCharacters []string) []string {
+func assignCharactersToRegisteredPlayers(newGameConfig []Ch, chosenCharacters []string) ([]string, string) {
+	var assassinCharacter string
 	for _, v := range newGameConfig {
 		if v.Checked == true {
 			chosenCharacters = append(chosenCharacters, v.Name)
+			if v.Assassin == true {
+				assassinCharacter = v.Name
+			}
 		}
 	}
+
 
 	rand.Seed(int64(time.Now().Nanosecond()))
 	rand.Shuffle(len(chosenCharacters), func(i, j int) {
@@ -869,7 +1051,10 @@ func assignCharactersToRegisteredPlayers(newGameConfig []Ch, chosenCharacters []
 		globalBoard.PlayerToCharacter[globalBoard.PlayerNames[i]] = chosenCharacters[i]
 		globalBoard.CharacterToPlayer[chosenCharacters[i]] = globalBoard.PlayerNames[i]
 	}
-	return chosenCharacters
+	if _, ok := globalBoard.CharacterToPlayer["Assassin"]; ok {
+		assassinCharacter = "Assassin"
+	}
+	return chosenCharacters, globalBoard.CharacterToPlayer[assassinCharacter].Player
 }
 
 type ListOfPlayersResponse struct {
@@ -900,6 +1085,93 @@ type PlayerName2 struct {
 	Player string `json:"player,omitempty"`
 	Ch bool `json:"ch,omitempty"`
 }
+
+func sameStringSlice(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	// create a map of string -> int
+	diff := make(map[string]int, len(x))
+	for _, _x := range x {
+		// 0 value for int is 0, so just increment a counter for the string
+		diff[_x]++
+	}
+	for _, _y := range y {
+		// If the string _y is not in diff bail out early
+		if _, ok := diff[_y]; !ok {
+			return false
+		}
+		diff[_y] -= 1
+		if diff[_y] == 0 {
+			delete(diff, _y)
+		}
+	}
+	if len(diff) == 0 {
+		return true
+	}
+	return false
+}
+
+func HandleMurder(selection []PlayerName2) {
+	var curMurder Murder
+	fmt.Println("selection: ", selection)
+	if globalBoard.State == MurdersAfterGoodVictory {
+		curMurder = globalBoard.PendingMurders[0]
+	} else if globalBoard.State == MurdersAfterBadVictory {
+		curMurder = globalBoard.PendingMurders[0]
+	}
+
+	chosenPlayers := make([]string, 0)
+	for _, player := range selection {
+		if player.Ch {
+			chosenPlayers = append(chosenPlayers, player.Player)
+			murderInfo, ok := globalBoard.PlayerToMurderInfo[player.Player]
+			if ok {
+				murderInfo.by = append(murderInfo.by, curMurder.By)
+				globalBoard.PlayerToMurderInfo[player.Player] = murderInfo
+			} else {
+				globalBoard.PlayerToMurderInfo[player.Player] = MurderInfo{by:[]string{curMurder.By}}
+			}
+		}
+	}
+
+	globalBoard.PendingMurders = globalBoard.PendingMurders[1:]
+	murderResult := MurderResult{targetCharacter:curMurder.TargetCharacters, byCharacter:curMurder.byCharacter}
+	if sameStringSlice(curMurder.target, chosenPlayers) {
+		//murder succeeded!
+		fmt.Println("Murder Success! Killer:", curMurder.By, " Selection: ", selection)
+		murderResult.success = true
+		murderResult.byCharacter = curMurder.byCharacter
+		murderResult.target = chosenPlayers
+		if curMurder.StateAfterSuccess != 0 {
+			oldState := globalBoard.State
+			globalBoard.State = curMurder.StateAfterSuccess
+			fmt.Println("New State:", globalBoard.State)
+			if oldState == MurdersAfterBadVictory && globalBoard.State == MurdersAfterGoodVictory {
+				pendingMurders, hasMurders := GetMurdersAfterGoodsWins()
+				if !hasMurders {
+					globalBoard.State = VictoryForGood
+					globalBoard.PendingMurders = make([]Murder, 0)
+					return
+				} else {
+					globalBoard.PendingMurders = pendingMurders
+				}
+			}
+		}
+	} else {
+		murderResult.success = false
+	}
+
+	if len(globalBoard.PendingMurders) == 0 {
+		fmt.Println("No more murders")
+		if globalBoard.State == MurdersAfterGoodVictory {
+			globalBoard.State = VictoryForGood
+		} else if globalBoard.State == MurdersAfterBadVictory {
+			globalBoard.State = VictoryForBad
+		}
+	}
+}
+
 
 func HandleNewSuggest(pl ListOfSuggestions) {
 	globalMutex.Lock()
@@ -989,16 +1261,22 @@ func HandleNewSuggest(pl ListOfSuggestions) {
 
 }
 
+type PlayerInfo struct {
+	Character string `json:"ch,omitempty"`
+	IsKilled bool `json:"isKilled,omitempty"`
+	isKilledBy []string
+}
 
 type GameState struct {
 	Players ListOfPlayersResponse `json:"players,omitempty"`
 	CurrentQuest int `json:"current,omitempty"`
-	Characters []string `json:"characters,omitempty"`
+	Characters map[string]CharacterDescription `json:"characters,omitempty"`
 	Size int `json:"size,omitempty"`
 	State int `json:"state"`
 	Archive []QuestArchiveItem `json:"archive"`
 	Secrets SecretResponse `json:"secrets"`
 	Suggester string `json:"suggester,omitempty"`
+	Murder Murder `json:"murder,omitempty"`
 	OptionalVotes []string `json:"optionalVotes,omitempty"`
 	SuggesterVeto string `json:"suggesterVeto,omitempty"`
 	SuggestedPlayers []string `json:"suggestedPlayers,omitempty"`
@@ -1006,6 +1284,7 @@ type GameState struct {
 	PlayersVotedYes []string `json:"PlayersVotedYesForSuggestion,omitempty"`
 	PlayersVotedNo []string `json:"PlayersVotedNoForSuggestion,omitempty"`
 	Results map[int]QuestStats `json:"results,omitempty"`
+	PlayerInfo map[string]PlayerInfo `json:"playerToCharacters,omitempty"`
 }
 
 func GetGameState(clientId string) GameState  {
@@ -1019,7 +1298,10 @@ func GetGameState(clientId string) GameState  {
 	board.CurrentQuest = globalBoard.quests.current + 1
 	board.Size = globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].NumOfQuests
 	board.Results = globalBoard.quests.results
-	board.Characters = globalBoard.Characters
+	board.Characters = make(map[string]CharacterDescription)
+	for _, ch := range globalBoard.Characters {
+		board.Characters[ch]=CharactersDescriptionMap[ch]
+	}
 	board.PlayersVotedForCurrQuest = globalBoard.quests.playerVotedForCurrentQuest
 	board.SuggesterVeto = globalBoard.suggestions.PlayerWithVeto
 	cpy := make([]QuestArchiveItem, len(globalBoard.archive))
@@ -1043,7 +1325,20 @@ func GetGameState(clientId string) GameState  {
 	if len(globalBoard.PlayerNames) > 0 {
 		board.Suggester = globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)].Player
 	}
-
+	if globalBoard.State == MurdersAfterBadVictory || globalBoard.State == MurdersAfterGoodVictory {
+		board.Murder.TargetCharacters = globalBoard.PendingMurders[0].TargetCharacters
+		board.Murder.By = globalBoard.PendingMurders[0].By
+	}
+	if globalBoard.State == VictoryForGood || globalBoard.State == VictoryForBad {
+		board.PlayerInfo = make(map[string]PlayerInfo)
+		for _, pl := range board.Players.Players {
+			playerInfo := PlayerInfo{}
+			playerInfo.Character = globalBoard.PlayerToCharacter[pl]
+			_, isKilled := globalBoard.PlayerToMurderInfo[pl.Player]
+			playerInfo.IsKilled = isKilled
+			board.PlayerInfo[pl.Player] = playerInfo
+		}
+	}
 	globalMutex.RUnlock()
 	return board
 }
@@ -1155,40 +1450,92 @@ func HandleJourneyVote(vote VoteForJourney) {
 
 		numOfExpectedQuests := globalConfigPerNumOfPlayers[len(globalBoard.PlayerNames)].NumOfQuests
 		if globalBoard.quests.successfulQuest > numOfExpectedQuests/ 2 {
-			globalBoard.State = VictoryForGood
+			pendingMurders, hasMurders := GetMurdersAfterGoodsWins()
+			if !hasMurders {
+				globalBoard.State = VictoryForGood
+			} else {
+				fmt.Println(pendingMurders)
+				globalBoard.State = MurdersAfterGoodVictory
+				globalBoard.PendingMurders = pendingMurders
+			}
 		} else if globalBoard.quests.unsuccessfulQuest > numOfExpectedQuests/ 2 || (numOfExpectedQuests == 4 && globalBoard.quests.unsuccessfulQuest == numOfExpectedQuests/ 2) {
-			globalBoard.State = VictoryForBad
+			pendingMurders, hasMurders := GetMurdersAfterBadsWins()
+			if !hasMurders {
+				globalBoard.State = VictoryForBad
+			} else {
+				globalBoard.State = MurdersAfterBadVictory
+				globalBoard.PendingMurders = pendingMurders
+			}
 		} else {
 
-
-			if _, ok := globalBoard.quests.Flags[HAS_TWO_LANCELOT]; ok {
+			if globalBoard.quests.Flags[HAS_TWO_LANCELOT] || 
+				globalBoard.quests.Flags[HAS_ONLY_BAD_LANCELOT] || 
+				globalBoard.quests.Flags[HAS_ONLY_GOOD_LANCELOT] {
 				//random number to decide if lancelots switch
 				isSwitchLancelots := globalBoard.lancelotCards[globalBoard.lancelotCardsIndex]
 				globalBoard.lancelotCardsIndex = (globalBoard.lancelotCardsIndex+1) % len(globalBoard.lancelotCards)
 				if isSwitchLancelots==1 {
-					lanBad := globalBoard.CharacterToPlayer["Lancelot-Bad"]
-					lanGood := globalBoard.CharacterToPlayer["Lancelot-Good"]
-					globalBoard.CharacterToPlayer["Lancelot-Bad"] = lanGood
-					globalBoard.CharacterToPlayer["Lancelot-Good"] = lanBad
-					globalBoard.PlayerToCharacter[lanBad] = "Lancelot-Good"
-					globalBoard.PlayerToCharacter[lanGood] = "Lancelot-Bad"
-					curEntry.IsSwitchLancelot = true
-					for i, pl := range globalBoard.playersWithBadCharacter {
-						if pl == lanBad.Player {
-							globalBoard.playersWithBadCharacter[i] = lanGood.Player
+					if globalBoard.quests.Flags[HAS_TWO_LANCELOT] {
+						lanBad := globalBoard.CharacterToPlayer["Lancelot-Bad"]
+						lanGood := globalBoard.CharacterToPlayer["Lancelot-Good"]
+						globalBoard.CharacterToPlayer["Lancelot-Bad"] = lanGood
+						globalBoard.CharacterToPlayer["Lancelot-Good"] = lanBad
+						globalBoard.PlayerToCharacter[lanBad] = "Lancelot-Good"
+						globalBoard.PlayerToCharacter[lanGood] = "Lancelot-Bad"
+						curEntry.IsSwitchLancelot = true
+						//fix bug of viviana that seeother lanselot
+						/*for i, pl := range globalBoard.playersWithBadCharacter {
+							if pl == lanBad.Player {
+								globalBoard.playersWithBadCharacter[i] = lanGood.Player
+								break
+							}
+						}
+						for i, pl := range globalBoard.playersWithGoodCharacter {
+							if pl == lanGood.Player {
+								globalBoard.playersWithGoodCharacter[i] = lanBad.Player
+								break
+							}
+						}*/	
+					} else if globalBoard.quests.Flags[HAS_ONLY_BAD_LANCELOT] {
+						lanBad := globalBoard.CharacterToPlayer["Lancelot-Bad"]
+						globalBoard.CharacterToPlayer["Lancelot-Good"] = lanBad
+						globalBoard.PlayerToCharacter[lanBad] = "Lancelot-Good"
+						delete(globalBoard.CharacterToPlayer, "Lancelot-Bad")
+						for i, ch  := range globalBoard.Characters {
+							if ch == "Lancelot-Bad" {
+								globalBoard.Characters = append(globalBoard.Characters[:i], globalBoard.Characters[i+1:]...)
+							}
+							globalBoard.Characters = append(globalBoard.Characters, "Lancelot-Good")
 							break
 						}
-					}
-					for i, pl := range globalBoard.playersWithGoodCharacter {
-						if pl == lanGood.Player {
-							globalBoard.playersWithGoodCharacter[i] = lanBad.Player
+						curEntry.IsSwitchLancelot = true
+						delete(globalBoard.quests.Flags, HAS_ONLY_BAD_LANCELOT)
+						globalBoard.quests.Flags[HAS_ONLY_GOOD_LANCELOT] = true
+					} else if globalBoard.quests.Flags[HAS_ONLY_GOOD_LANCELOT] {
+						lanBad := globalBoard.CharacterToPlayer["Lancelot-Good"]
+						globalBoard.CharacterToPlayer["Lancelot-Bad"] = lanBad
+						globalBoard.PlayerToCharacter[lanBad] = "Lancelot-Bad"
+						delete(globalBoard.CharacterToPlayer, "Lancelot-Good")
+						for i, ch  := range globalBoard.Characters {
+							if ch == "Lancelot-Good" {
+								globalBoard.Characters = append(globalBoard.Characters[:i], globalBoard.Characters[i+1:]...)
+							}
+							globalBoard.Characters = append(globalBoard.Characters, "Lancelot-Bad")
 							break
 						}
+						curEntry.IsSwitchLancelot = true
+						delete(globalBoard.quests.Flags, HAS_ONLY_GOOD_LANCELOT)
+						globalBoard.quests.Flags[HAS_ONLY_BAD_LANCELOT] = true
 					}
-				}
+
+				
 			}
+			if _, ok := globalBoard.quests.Flags[HAS_TWO_LANCELOT]; ok {
 
+				}
+			} else if _, ok := globalBoard.quests.Flags[HAS_ONLY_BAD_LANCELOT]; ok {
 
+			}
 			globalBoard.State = ShowJorneyResult
 			globalBoard.votesForNextMission = make(map[string]bool)
 		}
@@ -1305,6 +1652,18 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 		}
 
 		if globalBoard.isSuggestionGood > globalBoard.isSuggestionBad {
+
+			if gawainPlayer, ok := globalBoard.CharacterToPlayer["Gawain"]; ok {
+				if globalBoard.quests.current+1 == numOfQuests {
+					for _, c := range globalBoard.suggestions.SuggestedPlayers {
+						if c == gawainPlayer.Player {
+							globalBoard.State = VictoryForGawain
+							globalMutex.Unlock()
+							return
+						}
+					}
+				}
+			}
 			globalBoard.State = JorneyVoting
 			globalBoard.suggestions.unsuccessfulRetries = 0
 			curEntry.IsSuggestionAccepted = true
