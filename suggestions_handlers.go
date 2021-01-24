@@ -153,6 +153,19 @@ func HandleTemporarySuggest(pl []string) {
 }
 
 
+func isCharacterExists(lockHeld bool, character string) (PlayerName, bool) {
+	if !lockHeld {
+		globalMutex.RLock()
+	}
+
+	player, exists := globalBoard.CharacterToPlayer[character]
+
+	if !lockHeld {
+		globalMutex.RUnlock()
+	}
+	return player, exists
+}
+
 
 func HandleSuggestionVote(vote VoteForSuggestion) {
 	log.Println("suggestion -  ", vote.PlayerName, " voted ", vote.Vote)
@@ -203,8 +216,12 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 		if globalBoard.isSuggestionGood > globalBoard.isSuggestionBad {
 
-			if gawainPlayer, ok := globalBoard.CharacterToPlayer["Gawain"]; ok {
-				if globalBoard.quests.current+1 == numOfQuests {
+			/*
+				Gawain's logic: If it's the last quest, the suggestion was accepted
+				and Gawain is included - he WINS the game!
+			*/
+			if gawainPlayer, exists := isCharacterExists(true, "Gawain"); exists {
+				if globalBoard.quests.current + 1 == numOfQuests {
 					for _, c := range globalBoard.suggestions.SuggestedPlayers {
 						if c == gawainPlayer.Player {
 							globalBoard.State = VictoryForGawain
@@ -222,59 +239,9 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 			globalBoard.QuestStage += 0.01
 			globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
 
-			//for vivian
-			if SirKay == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-			} else if Mordred == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-			} else if Lot == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-				vivianaSecrets := globalBoard.Secrets[Viviana]
-				if vivianaSecrets == nil {
-					vivianaSecrets = make([]string, 1)
-				}
-				if nil == globalBoard.playersWithCharacters {
-					globalBoard.playersWithCharacters = make(map[string]string)
-				}
-				globalBoard.playersWithCharacters[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player] = Lot
-				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player+" is Lot")
-				globalBoard.Secrets[Viviana] = vivianaSecrets
-			} else if "Gawain" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-				vivianaSecrets := globalBoard.Secrets[Viviana]
-				if vivianaSecrets == nil {
-					vivianaSecrets = make([]string, 1)
-				}
-				if nil == globalBoard.playersWithCharacters {
-					globalBoard.playersWithCharacters = make(map[string]string)
-				}
-				globalBoard.playersWithCharacters[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player] = "Gawain"
-				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player+" is Gawain")
-				globalBoard.Secrets[Viviana] = vivianaSecrets
-			} else if "Ginerva" == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-				vivianaSecrets := globalBoard.Secrets[Viviana]
-				if vivianaSecrets == nil {
-					vivianaSecrets = make([]string, 1)
-				}
-				vivianaSecrets = append(vivianaSecrets, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player+" is Ginerva")
-				globalBoard.Secrets[Viviana] = vivianaSecrets
-			} else if Stray == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				if nil == globalBoard.playersWithCharacters {
-					globalBoard.playersWithCharacters = make(map[string]string)
-				}
-				globalBoard.playersWithCharacters[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player] = Stray
-			} else if Oberon == globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]] {
-				if nil == globalBoard.playersWithCharacters {
-					globalBoard.playersWithCharacters = make(map[string]string)
-				}
-				globalBoard.playersWithCharacters[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player] = Oberon
-			} else if _, isSuggesterBadCharacter := badCharacters[globalBoard.PlayerToCharacter[globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)]]]; isSuggesterBadCharacter {
-				log.Println("suggester is bad")
-				globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
-			} else {
-				log.Println("suggester is good")
-				globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter, globalBoard.PlayerNames[globalBoard.suggestions.suggesterIndex%len(globalBoard.PlayerNames)].Player)
+			if _, exists := isCharacterExists(true, Viviana); exists {
+				/* Suggestion was accepted, viviana get a new secret about the suggester. */
+				UncoverSuggesterToViviana()
 			}
 
 			if globalBoard.quests.Flags[HAS_BALAIN_AND_BALIN] {
@@ -315,4 +282,51 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 	globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 
 	globalMutex.Unlock()
+}
+
+func UncoverSuggesterToViviana() {
+	suggesterIndex := globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
+	suggesterPlayerName := globalBoard.PlayerNames[suggesterIndex]
+	suggesterCharacter := globalBoard.PlayerToCharacter[suggesterPlayerName]
+
+	if SirKay == suggesterCharacter {
+		UncoverAsBadCharacter(suggesterPlayerName)
+	} else if Mordred == suggesterCharacter {
+		UncoverAsGoodCharacter(suggesterPlayerName)
+	} else if Lot == suggesterCharacter {
+		UncoverAsBadCharacter(suggesterPlayerName)
+		UncoverCharacter(suggesterPlayerName, Lot)
+	} else if "Gawain" == suggesterCharacter {
+		UncoverAsBadCharacter(suggesterPlayerName)
+		UncoverCharacter(suggesterPlayerName, "Gawain")
+	} else if "Ginerva" == suggesterCharacter {
+		UncoverAsBadCharacter(suggesterPlayerName)
+	} else if Stray == suggesterCharacter {
+		UncoverCharacter(suggesterPlayerName, Stray)
+	} else if Oberon == suggesterCharacter {
+		UncoverCharacter(suggesterPlayerName, Oberon)
+	} else if _, isSuggesterBadCharacter := badCharacters[suggesterCharacter]; isSuggesterBadCharacter {
+		log.Println("suggester is bad")
+		UncoverAsBadCharacter(suggesterPlayerName)
+	} else {
+		log.Println("suggester is good")
+		UncoverAsGoodCharacter(suggesterPlayerName)
+	}
+}
+
+func UncoverCharacter(suggesterPlayerName PlayerName, character string) {
+	if nil == globalBoard.playersWithCharacters {
+		globalBoard.playersWithCharacters = make(map[string]string)
+	}
+	globalBoard.playersWithCharacters[suggesterPlayerName.Player] = character
+}
+
+func UncoverAsBadCharacter(suggesterPlayerName PlayerName) {
+	globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter,
+		suggesterPlayerName.Player)
+}
+
+func UncoverAsGoodCharacter(suggesterPlayerName PlayerName) {
+	globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter,
+		suggesterPlayerName.Player)
 }

@@ -100,7 +100,7 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 	rand.Shuffle(len(chosenCharacters), func(i, j int) {
 		chosenCharacters[i], chosenCharacters[j] = chosenCharacters[j], chosenCharacters[i]
 	})
-	log.Println("ttttttttttttttttt", chosenCharacters)
+	log.Println("chosen characters: ", chosenCharacters)
 	if _, ok := globalBoard.CharacterToPlayer[Seer]; ok {
 		globalBoard.State = SirPickPlayer
 	} else {

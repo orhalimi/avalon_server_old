@@ -298,6 +298,7 @@ type BoardGame struct {
 var globalBoard = BoardGame{
 	playersWithBadCharacter:  make([]string, 0),
 	playersWithGoodCharacter: make([]string, 0),
+	playersWithCharacters: make(map[string]string),
 	clientIdToPlayerName:     make(map[string]PlayerName),
 	QuestStage:               1,
 	lancelotCards:            make([]int, 7),

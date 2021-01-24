@@ -5,6 +5,14 @@ import (
 	"log"
 )
 
+const (
+	// Possible votes
+	VoteFail = 0
+	VoteSuccess = 1
+	VoteReversal = 2
+	VoteBeast = 3
+	VoteAvalonPower = 5
+)
 type VoteForJourney struct {
 	PlayerName string `json:"playerName,omitempty"`
 	Vote       int    `json:"vote,omitempty"`
@@ -42,8 +50,8 @@ func HandleJourneyVote(vote VoteForJourney) {
 	}
 
 	origVote := vote.Vote
-	if origVote == 3 {
-		origVote = 0
+	if origVote == VoteBeast {
+		origVote = VoteFail
 	}
 	log.Println(vote.PlayerName, " voted ", vote.Vote)
 	globalBoard.quests.playerVotedForCurrentQuest = append(globalBoard.quests.playerVotedForCurrentQuest, vote.PlayerName)
@@ -55,23 +63,23 @@ func HandleJourneyVote(vote VoteForJourney) {
 
 
 	curEntry := globalBoard.archive[len(globalBoard.archive)-1] //Stats table
-	if vote.Vote == 0 {
+	if vote.Vote == VoteFail {
 		res.NumOfFailures++
 		curEntry.NumberOfFailures++
-	} else if vote.Vote == 1 {
+	} else if vote.Vote == VoteSuccess {
 		res.NumOfSuccess++
 		curEntry.NumberOfSuccesses++
-	} else if vote.Vote == 3 {
+	} else if vote.Vote == VoteBeast {
 		res.NumOfBeasts++
 		curEntry.NumberOfBeasts++
-	} else if vote.Vote == 2 {
+	} else if vote.Vote == VoteReversal {
 		res.NumOfReversal++
 		curEntry.NumberOfReversal++
 	}
 
 	if len(mp) == requiredVotes { //last vote
 		for _, vote := range mp {
-			if vote == 5/*Avalon Power*/ {
+			if vote == VoteAvalonPower {
 				globalBoard.State = WaitingForSuggestion
 				curEntry.AvalonPower = true
 
@@ -178,7 +186,7 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 			globalBoard.State = MurdersAfterGoodVictory
 			globalBoard.PendingMurders = pendingMurders
 		}
-	} else if globalBoard.quests.unsuccessfulQuest > numOfExpectedQuests/2 || (numOfExpectedQuests == 4 && globalBoard.quests.unsuccessfulQuest == numOfExpectedQuests/2) {
+	} else if isBadVictory(globalBoard.quests.unsuccessfulQuest, numOfExpectedQuests) {
 		pendingMurders, hasMurders := GetMurdersAfterBadsWins()
 		if !hasMurders {
 			globalBoard.State = VictoryForBad
@@ -262,16 +270,20 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 	globalBoard.suggestions.SuggestedPlayers = make([]string, 0)
 }
 
+func isBadVictory(numOfUnsuccessfulQuests, numOfExpectedQuests int) bool {
+	return numOfUnsuccessfulQuests > numOfExpectedQuests/2 || (numOfExpectedQuests == 4 && numOfUnsuccessfulQuests == 2)
+}
+
 func CalculateQuestResult(mp []int) int {
 	result := JorneySuccess
 	log.Println("++ last")
 	NumOfFailures := 0
 	NumOfReverse := 0
 	for _, v := range mp {
-		if v == 0 {
+		if v == VoteFail {
 			NumOfFailures++
 		}
-		if v == 2 {
+		if v == VoteReversal {
 			NumOfReverse++
 		}
 	}
@@ -315,7 +327,8 @@ func CalculateQuestResult(mp []int) int {
 	return result
 }
 
-func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[string]bool, flags map[int]bool, current int, numOfPlayers int) []string {
+func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[string]bool,
+	flags map[int]bool, current int, numOfPlayers int) []string {
 
 	if character == "Gawain" {
 		return []string{"Fail", "Success"}
@@ -330,16 +343,23 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 	if character == Balin {
 		return []string{"Fail"}
 	}
+
+	/*
+		Titanya's optional votes: If it's the first vote for Titanya - she must vote "Fail".
+		Afterward, she vote Success. If the bads needs one more failure for victory - Titanya
+		votes Success!
+	*/
 	if character == Titanya {
 		numOfExpectedQuests := globalConfigPerNumOfPlayers[numOfPlayers].NumOfQuests
-		if globalBoard.quests.unsuccessfulQuest+1 > numOfExpectedQuests/2 {
+		if isBadVictory(globalBoard.quests.unsuccessfulQuest+1, numOfExpectedQuests) {
 			return []string{"Success"}
 		}
 		if _, ok := flags[TITANYA_FIRST_FAIL]; !ok {
-			log.Println("titanya  has fail")
+			log.Println("titanya has fail")
 			return []string{"Fail"}
 		}
 	}
+
 	if character == Elaine {
 		numOfExpectedQuests := globalConfigPerNumOfPlayers[numOfPlayers].NumOfQuests
 		if _, ok := flags[ELAINE_AVALON_POWER_CARD]; !ok && numOfExpectedQuests != globalBoard.quests.current + 1 {
@@ -409,17 +429,20 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 }
 
 func getVoteStr(vote int) string {
-	if 0 == vote {
+	if VoteFail == vote {
 		return "Fail"
 	}
-	if 1 == vote {
+	if VoteSuccess == vote {
 		return "Success"
 	}
-	if 2 == vote {
+	if VoteReversal == vote {
 		return "Reversal"
 	}
-	if 3 == vote {
+	if VoteBeast == vote {
 		return "Beast"
+	}
+	if VoteAvalonPower == vote {
+		return "Avalon Power"
 	}
 	return "N/A"
 }

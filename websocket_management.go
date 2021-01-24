@@ -260,6 +260,7 @@ func (c *Client) read() {
 				lancelotCards:            make([]int, 7),
 				playersWithBadCharacter:  make([]string, 0),
 				playersWithGoodCharacter: make([]string, 0),
+				playersWithCharacters: 	make(map[string]string),
 				Secrets:                  make(map[string][]string),
 				clientIdToPlayerName:     globalBoard.clientIdToPlayerName,
 				manager:                  globalBoard.manager,
