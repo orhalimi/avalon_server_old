@@ -92,11 +92,7 @@ func (manager *ClientManager) start() {
 					}
 					gm := GetGameState(conn.id)
 					jsonMessage, _ := json.Marshal(&gm)
-					if globalBoard.PlayerToCharacter[PlayerName{conn.id}] == Viviana {
-						log.Println(Viviana)
-						log.Println(string(jsonMessage))
-					}
-					log.Println(string(jsonMessage))
+					//log.Println(string(jsonMessage))
 					message, _ = json.Marshal(&Message{Sender: msg.Sender, Content: string(jsonMessage)})
 				}
 

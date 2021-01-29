@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"log"
+	"strings"
+)
 
 
 type PlayerNameMurder struct {
@@ -128,6 +131,10 @@ func HandleMurder(m MurderMessageInternal) {
 		} else if globalBoard.State == MurdersAfterBadVictory {
 			globalBoard.State = VictoryForBad
 		}
+	} else {
+		targetCharactersString := strings.Join(globalBoard.PendingMurders[0].TargetCharacters[:], ",")
+		globalBoard.StateDescription = "Murder: " + globalBoard.PendingMurders[0].ByCharacter + " is trying to kill: " +
+			targetCharactersString
 	}
 }
 

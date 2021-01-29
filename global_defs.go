@@ -293,6 +293,7 @@ type BoardGame struct {
 	QuestStage float32 // e.g. 1, 1.1, 1.2 then 2 ..
 	LastQuestStage float32 // e.g. 1, 1.1, 1.2 then 2 .. if quest is canceled
 	State      int     `json:"state"`
+	StateDescription      string
 }
 
 var globalBoard = BoardGame{

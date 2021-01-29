@@ -103,8 +103,12 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 	log.Println("chosen characters: ", chosenCharacters)
 	if _, ok := globalBoard.CharacterToPlayer[Seer]; ok {
 		globalBoard.State = SirPickPlayer
+		globalBoard.StateDescription = "Seer is choosing player to see..."
 	} else {
 		globalBoard.State = WaitingForSuggestion
+		suggesterIndex := globalBoard.suggestions.suggesterIndex
+		globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+			" is choosing players..."
 	}
 	if globalBoard.quests.results == nil {
 		globalBoard.quests.results = make(map[int]QuestStats)

@@ -61,6 +61,7 @@ type GameState struct {
 	Characters                map[string]CharacterDescription `json:"characters,omitempty"`
 	Size                      int                             `json:"size,omitempty"`
 	State                     int                             `json:"state"`
+	StateDescription          string                            `json:"stateDescription"`
 	Archive                   []QuestArchiveItem              `json:"archive"`
 	Secrets                   SecretResponse                  `json:"secrets"`
 	Suggester                 string                          `json:"suggester,omitempty"`
@@ -168,6 +169,7 @@ func GetGameState(clientId string) GameState {
 		board.OnlyGoodSuggested = globalBoard.suggestions.OnlyGoodSuggested
 	}
 	board.State = globalBoard.State
+	board.StateDescription = globalBoard.StateDescription
 	board.Secrets = GetNightSecretsFromPlayerName(PlayerName{clientId})
 	board.OptionalVotes = getOptionalVotesAccordingToQuestMembers(globalBoard.PlayerToCharacter[PlayerName{clientId}], globalBoard.suggestions.SuggestedCharacters, globalBoard.quests.Flags, globalBoard.quests.current, globalBoard.numOfPlayers)
 	board.PlayersVotedYes = globalBoard.suggestions.playersVotedYes

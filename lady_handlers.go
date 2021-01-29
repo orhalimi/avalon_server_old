@@ -69,7 +69,9 @@ func LadySuggestHandler(suggestion string) {
 	curEntry.LadySuggester = globalBoard.ladyOfTheLake.currentSuggester
 	globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 	globalBoard.ladyOfTheLake.currentChosenPlayer = suggestion
+
 	globalBoard.State = LadyResponse
+	globalBoard.StateDescription = "Lady Of The Lake: " + suggestion + " got The Lady. Waiting for his answer..."
 	globalMutex.Unlock()
 }
 
@@ -78,6 +80,7 @@ func LadyResponseHandler(loyalty int) {
 	globalMutex.Lock()
 	globalBoard.State = LadySuggesterPublishResponseToWorld
 	globalBoard.ladyOfTheLake.ladyResponse = loyalty
+	globalBoard.StateDescription = "Lady Of The Lake: " + " got Lady Response. Waiting for his publication..."
 	globalMutex.Unlock()
 }
 

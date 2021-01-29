@@ -3,21 +3,23 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 )
 
 const (
 	// Possible votes
-	VoteFail = 0
-	VoteSuccess = 1
-	VoteReversal = 2
-	VoteBeast = 3
+	VoteFail        = 0
+	VoteSuccess     = 1
+	VoteReversal    = 2
+	VoteBeast       = 3
 	VoteAvalonPower = 5
 )
+
 type VoteForJourney struct {
 	PlayerName string `json:"playerName,omitempty"`
 	Vote       int    `json:"vote,omitempty"`
 }
-
 
 type VoteForJourneyMessage struct {
 	Tp      string         `json:"type"`
@@ -37,15 +39,18 @@ func HandleJourneyVote(vote VoteForJourney) {
 		return
 	}
 
-	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == Titanya && vote.Vote == 0 {
+	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == Titanya &&
+		vote.Vote == VoteFail {
 		globalBoard.quests.Flags[TITANYA_FIRST_FAIL] = true
 	}
 
-	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == Elaine && vote.Vote == 5 {
+	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == Elaine &&
+		vote.Vote == VoteAvalonPower {
 		globalBoard.quests.Flags[ELAINE_AVALON_POWER_CARD] = true
 	}
 
-	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == TheQuestingBeast && vote.Vote == 1 {
+	if globalBoard.PlayerToCharacter[PlayerName{vote.PlayerName}] == TheQuestingBeast &&
+		vote.Vote == VoteSuccess {
 		globalBoard.quests.Flags[BEAST_FIRST_SUCCESS] = true
 	}
 
@@ -54,13 +59,17 @@ func HandleJourneyVote(vote VoteForJourney) {
 		origVote = VoteFail
 	}
 	log.Println(vote.PlayerName, " voted ", vote.Vote)
+
 	globalBoard.quests.playerVotedForCurrentQuest = append(globalBoard.quests.playerVotedForCurrentQuest, vote.PlayerName)
+
+	votedPlayersString := strings.Join(globalBoard.quests.playerVotedForCurrentQuest[:], ",")
+	globalBoard.StateDescription = " Voting for Quest " + strconv.Itoa(current+1) + "!" + votedPlayersString + " voted!"
+
 	globalBoard.quests.playerVotedForCurrent[vote.PlayerName] = origVote
 	mp := append(globalBoard.quests.playersVotes[current], origVote)
 
 	res := globalBoard.quests.results[current+1]
 	requiredVotes := res.NumOfPlayers
-
 
 	curEntry := globalBoard.archive[len(globalBoard.archive)-1] //Stats table
 	if vote.Vote == VoteFail {
@@ -81,6 +90,10 @@ func HandleJourneyVote(vote VoteForJourney) {
 		for _, vote := range mp {
 			if vote == VoteAvalonPower {
 				globalBoard.State = WaitingForSuggestion
+				suggesterIndex := globalBoard.suggestions.suggesterIndex
+				globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+					" is choosing players..."
+
 				curEntry.AvalonPower = true
 
 				playerWithVeto := globalBoard.suggestions.PlayerWithVeto
@@ -114,6 +127,8 @@ func HandleJourneyVote(vote VoteForJourney) {
 		if _, ok := globalBoard.quests.Flags[EXCALIBUR]; ok {
 			globalBoard.State = ExcaliburPick
 			//update info
+			globalBoard.StateDescription = "Excalibur: " + globalBoard.suggestions.excalibur.Player +
+				" is choosing vote to reverse..."
 			globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 			globalBoard.quests.results[current+1] = res
 			globalBoard.quests.playersVotes[current] = mp
@@ -185,6 +200,10 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 			fmt.Println(pendingMurders)
 			globalBoard.State = MurdersAfterGoodVictory
 			globalBoard.PendingMurders = pendingMurders
+
+			targetCharactersString := strings.Join(globalBoard.PendingMurders[0].TargetCharacters[:], ",")
+			globalBoard.StateDescription = "Murder: " + globalBoard.PendingMurders[0].ByCharacter + " is trying to kill: " +
+				targetCharactersString
 		}
 	} else if isBadVictory(globalBoard.quests.unsuccessfulQuest, numOfExpectedQuests) {
 		pendingMurders, hasMurders := GetMurdersAfterBadsWins()
@@ -193,6 +212,10 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 		} else {
 			globalBoard.State = MurdersAfterBadVictory
 			globalBoard.PendingMurders = pendingMurders
+
+			targetCharactersString := strings.Join(globalBoard.PendingMurders[0].TargetCharacters[:], ",")
+			globalBoard.StateDescription = "Murders: " + globalBoard.PendingMurders[0].ByCharacter + " should kill: " +
+				targetCharactersString
 		}
 	} else { //game continue
 		if globalBoard.quests.Flags[HAS_TWO_LANCELOT] ||
@@ -259,8 +282,13 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 		//end of special actions after quest
 		if globalBoard.quests.Flags[LADY] && globalBoard.quests.current >= 1 {
 			globalBoard.State = WaitingForLadySuggester
+			globalBoard.StateDescription = "Lady Of The Lake: " + globalBoard.ladyOfTheLake.currentSuggester +
+				" is choosing player..."
 		} else {
 			globalBoard.State = WaitingForSuggestion
+			suggesterIndex := globalBoard.suggestions.suggesterIndex
+			globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+			" is choosing players..."
 		}
 
 	}
@@ -362,7 +390,7 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 
 	if character == Elaine {
 		numOfExpectedQuests := globalConfigPerNumOfPlayers[numOfPlayers].NumOfQuests
-		if _, ok := flags[ELAINE_AVALON_POWER_CARD]; !ok && numOfExpectedQuests != globalBoard.quests.current + 1 {
+		if _, ok := flags[ELAINE_AVALON_POWER_CARD]; !ok && numOfExpectedQuests != globalBoard.quests.current+1 {
 			log.Println("elaine avalon card or success")
 			return []string{"Success", "Avalon Power"}
 		}

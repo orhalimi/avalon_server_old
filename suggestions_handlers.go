@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"math"
+	"strconv"
+	"strings"
 )
 
 type Suggestion struct {
@@ -74,6 +76,8 @@ func HandleNewSuggest(pl Suggestion) {
 	}
 
 	globalBoard.State = SuggestionVoting
+	suggestedPlayersString := strings.Join(suggestedPlayers[:], ",")
+	globalBoard.StateDescription = "Vote For New Suggestion: by: " + globalBoard.PlayerNames[suggesterIn].Player + "; Suggested Players: " + suggestedPlayersString + "; Excalibur: " + pl.ExcaliburPlayer
 	globalBoard.votesForNextMission = make(map[string]bool)
 	globalBoard.suggestions.playersVotedYes = make([]string, 0)
 	globalBoard.suggestions.playersVotedNo = make([]string, 0)
@@ -81,7 +85,7 @@ func HandleNewSuggest(pl Suggestion) {
 	if globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]-1 == globalBoard.suggestions.unsuccessfulRetries {
 		globalBoard.State = JorneyVoting
 		globalBoard.suggestions.unsuccessfulRetries = 0
-
+		globalBoard.StateDescription = "The Quest was accepted AUTOMATIACLLY. The Vote for Quest " + strconv.Itoa(globalBoard.quests.current+1) + " is starting now... "
 		allPlayers := make([]string, len(globalBoard.PlayerNames))
 		for _, player := range globalBoard.PlayerNames {
 			allPlayers = append(allPlayers, player.Player)
@@ -98,6 +102,7 @@ func HandleNewSuggest(pl Suggestion) {
 		globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
 		globalBoard.isSuggestionGood, globalBoard.isSuggestionBad = 0, 0
 		globalBoard.suggestions.suggesterIndex++
+		globalBoard.suggestions.suggesterIndex = globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
 
 	}
 	globalBoard.archive = append(globalBoard.archive, newEntry)
@@ -117,6 +122,9 @@ func HandleTemporarySuggest(pl []string) {
 	}
 
 	globalBoard.suggestions.SuggestedTemporaryPlayers = suggestedPlayersStr
+	suggesterIn := globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
+	globalBoard.StateDescription = globalBoard.PlayerNames[suggesterIn].Player +
+		" is suggesting " + globalBoard.suggestions.SuggestedTemporaryPlayers + "..."
 	globalMutex.Unlock()
 
 }
@@ -161,7 +169,7 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 		globalBoard.isSuggestionBad++ //inc bad counter
 	}
 
-	if len(globalBoard.votesForNextMission) == len(globalBoard.PlayerNames) { //last vote
+	if len(globalBoard.votesForNextMission) == globalBoard.numOfPlayers { //last vote
 		log.Println("vote is over. num of players =", len(globalBoard.PlayerNames))
 		curEntry.IsSuggestionOver = true
 
@@ -201,6 +209,7 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 				}
 			}
 			globalBoard.State = JorneyVoting
+			globalBoard.StateDescription = "The Quest was accepted. The Vote for Quest " + strconv.Itoa(globalBoard.quests.current+1) + " is starting now... "
 			curEntry.IsSuggestionAccepted = true
 			globalBoard.suggestions.LastUnsuccessfulRetries = globalBoard.suggestions.unsuccessfulRetries
 			globalBoard.suggestions.unsuccessfulRetries = 0
@@ -240,6 +249,11 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 			globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[suggesterVetoIn].Player
 		} else {
 			globalBoard.State = WaitingForSuggestion
+
+			suggesterIndex := globalBoard.suggestions.suggesterIndex
+			globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+				" is choosing players..."
+
 			globalBoard.QuestStage += 0.1
 			globalBoard.QuestStage = float32(math.Round(float64(globalBoard.QuestStage*100)) / 100)
 			globalBoard.suggestions.unsuccessfulRetries++
@@ -247,6 +261,7 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 		globalBoard.isSuggestionGood, globalBoard.isSuggestionBad = 0, 0
 		globalBoard.suggestions.suggesterIndex++
+		globalBoard.suggestions.suggesterIndex = globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
 	}
 	globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 
@@ -257,7 +272,10 @@ func UncoverSuggesterToViviana() {
 	suggesterIndex := globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
 	suggesterPlayerName := globalBoard.PlayerNames[suggesterIndex]
 	suggesterCharacter := globalBoard.PlayerToCharacter[suggesterPlayerName]
-
+	strayPlayer, strayExists := isCharacterExists(true, Stray)
+	if strayExists && strayPlayer == suggesterPlayerName {
+		suggesterCharacter = Stray
+	}
 	if SirKay == suggesterCharacter {
 		UncoverAsBadCharacter(suggesterPlayerName)
 	} else if Mordred == suggesterCharacter {

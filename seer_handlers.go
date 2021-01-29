@@ -119,5 +119,9 @@ func HandleSir(m SirMessageInternal) {
 	}
 
 	globalBoard.State = WaitingForSuggestion
+	suggesterIndex := globalBoard.suggestions.suggesterIndex
+	globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+		" is choosing players..."
+
 	globalMutex.Unlock()
 }
