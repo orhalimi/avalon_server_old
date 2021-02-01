@@ -23,12 +23,22 @@ func ExcaliburHandler(excaliburPick []string) {
 	mp := globalBoard.quests.playersVotes[current]
 	res := globalBoard.quests.results[current+1]
 	curEntry := globalBoard.archive[len(globalBoard.archive)-1] //Stats table
+
+	globalBoard.StateDescription = "Excalibur: " + globalBoard.suggestions.excalibur.Player +
+		" chosed player to change his vote..."
+
 	if len(excaliburPick) == 1 {
 		character := globalBoard.PlayerToCharacter[PlayerName{excaliburPick[0]}]
 		curEntry.ExcaliburChosenPlayer = excaliburPick[0]
 		playerVote := globalBoard.quests.playerVotedForCurrent[excaliburPick[0]]
 		globalBoard.suggestions.excalibur.ChosenPlayerVote = playerVote
 		globalBoard.Secrets[globalBoard.suggestions.excalibur.Player] = append(globalBoard.Secrets[globalBoard.suggestions.excalibur.Player], excaliburPick[0]+" voted "+getVoteStr(playerVote)+"(Quest "+strconv.FormatFloat(float64(curEntry.Id), 'f', 2, 32)+")")
+
+		/* If we have Avalon Power, cancel this quest. */
+		if StartNewSuggestion(mp, curEntry, current) {
+			return
+		}
+
 		if character != Maeve {
 			var newVote int
 			log.Println("character:", character, "player vote:", playerVote)

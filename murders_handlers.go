@@ -60,6 +60,7 @@ func HandleMurder(m MurderMessageInternal) {
 		if player.Ch {
 			if globalBoard.PlayerToCharacter[PlayerName{player.Player}] == SirGawain {
 				globalBoard.State = VictoryForSirGawain
+				globalBoard.StateDescription = "VICTORY for SirGawain"
 				return
 			}
 			chosenPlayers = append(chosenPlayers, player.Player)
@@ -113,6 +114,7 @@ func HandleMurder(m MurderMessageInternal) {
 				pendingMurders, hasMurders := GetMurdersAfterGoodsWins()
 				if !hasMurders {
 					globalBoard.State = VictoryForGood
+					globalBoard.StateDescription = "VICTORY for Goods"
 					globalBoard.PendingMurders = make([]Murder, 0)
 					return
 				} else {
@@ -128,8 +130,10 @@ func HandleMurder(m MurderMessageInternal) {
 		log.Println("No more murders")
 		if globalBoard.State == MurdersAfterGoodVictory {
 			globalBoard.State = VictoryForGood
+			globalBoard.StateDescription = "VICTORY for Goods"
 		} else if globalBoard.State == MurdersAfterBadVictory {
 			globalBoard.State = VictoryForBad
+			globalBoard.StateDescription = "VICTORY for Bads"
 		}
 	} else {
 		targetCharactersString := strings.Join(globalBoard.PendingMurders[0].TargetCharacters[:], ",")
@@ -142,10 +146,16 @@ func GetMurdersAfterGoodsWins() ([]Murder, bool) {
 
 	murders := make([]Murder, 0)
 
-	if beast, isKingClaudinExists := globalBoard.CharacterToPlayer[TheQuestingBeast]; isKingClaudinExists {
-		if pellinore, isPrinceClaudinExists := globalBoard.CharacterToPlayer[Pellinore]; isPrinceClaudinExists {
-			m := Murder{target: []string{beast.Player}, TargetCharacters: []string{TheQuestingBeast}, By: pellinore.Player}
-			murders = append(murders, m)
+	if beast, isTheQuestingBeastExists := isCharacterExists(true, TheQuestingBeast); isTheQuestingBeastExists {
+		if pellinore, isPellinoreExists := isCharacterExists(true, Pellinore); isPellinoreExists {
+
+			if globalBoard.quests.Flags[BEAST_VOTE_SEEN] &&
+				globalBoard.quests.Flags[BEAST_AND_PELLINORE_AT_SAME_QUEST] {
+				log.Println("not adding beast murder.")
+			} else {
+				m := Murder{target: []string{beast.Player}, TargetCharacters: []string{TheQuestingBeast}, By: pellinore.Player}
+				murders = append(murders, m)
+			}
 		}
 	}
 

@@ -201,7 +201,7 @@ type QuestStats struct {
 	AvalonPower   bool `json:"avalon_power,omitempty"`
 }
 
-const (
+const ( //Flags
 	TITANYA_FIRST_FAIL = iota
 	BEAST_FIRST_SUCCESS
 	HAS_TWO_LANCELOT
@@ -211,6 +211,8 @@ const (
 	EXCALIBUR
 	ELAINE_AVALON_POWER_CARD
 	LADY
+	BEAST_VOTE_SEEN
+	BEAST_AND_PELLINORE_AT_SAME_QUEST
 )
 
 type QuestManager struct {
@@ -232,7 +234,6 @@ type QuestArchiveItem struct {
 	Suggester                      PlayerName `json:"suggester"`
 	SuggestedPlayers               []string   `json:"suggestedPlayers"`
 	IsSuggestionAccepted           bool       `json:"isSuggestionAccepted"`
-	IsSuggestionOver               bool       `json:"isSuggestionOver"`
 	IsSwitchLancelot               bool       `json:"switch"`
 	NumberOfReversal               int        `json:"numberOfReversal"`
 	NumberOfSuccesses              int        `json:"numberOfSuccesses"`
@@ -252,7 +253,6 @@ type QuestSuggestionsManager struct {
 	playersVotedYes           []string
 	playersVotedNo            []string
 	unsuccessfulRetries       int
-	LastUnsuccessfulRetries 	int
 	PlayerWithVeto            string
 	suggesterIndex            int
 	SuggestedPlayers          []string

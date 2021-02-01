@@ -82,27 +82,24 @@ func HandleNewSuggest(pl Suggestion) {
 	globalBoard.suggestions.playersVotedYes = make([]string, 0)
 	globalBoard.suggestions.playersVotedNo = make([]string, 0)
 
-	if globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]-1 == globalBoard.suggestions.unsuccessfulRetries {
-		globalBoard.State = JorneyVoting
-		globalBoard.suggestions.unsuccessfulRetries = 0
-		globalBoard.StateDescription = "The Quest was accepted AUTOMATIACLLY. The Vote for Quest " + strconv.Itoa(globalBoard.quests.current+1) + " is starting now... "
+	/* Hammer */
+	if globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]-1 ==
+		globalBoard.suggestions.unsuccessfulRetries {
+
+		if HandleAcceptedSuggestion(globalBoard.numOfPlayers, newEntry) {
+			return
+		}
+
 		allPlayers := make([]string, len(globalBoard.PlayerNames))
 		for _, player := range globalBoard.PlayerNames {
 			allPlayers = append(allPlayers, player.Player)
 		}
 
-		UncoverSuggesterToViviana()
-
-		newEntry.IsSuggestionAccepted = true
-		newEntry.IsSuggestionOver = true
 		newEntry.PlayersVotedYes = allPlayers
 		newEntry.LadySuggester = globalBoard.ladyOfTheLake.currentSuggester //lady of the lake
 		globalBoard.suggestions.playersVotedYes = allPlayers
-		globalBoard.QuestStage += 0.01
-		globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
-		globalBoard.isSuggestionGood, globalBoard.isSuggestionBad = 0, 0
-		globalBoard.suggestions.suggesterIndex++
-		globalBoard.suggestions.suggesterIndex = globalBoard.suggestions.suggesterIndex % len(globalBoard.PlayerNames)
+
+		globalBoard.suggestions.suggesterIndex = (globalBoard.suggestions.suggesterIndex+1) % len(globalBoard.PlayerNames)
 
 	}
 	globalBoard.archive = append(globalBoard.archive, newEntry)
@@ -171,7 +168,6 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 	if len(globalBoard.votesForNextMission) == globalBoard.numOfPlayers { //last vote
 		log.Println("vote is over. num of players =", len(globalBoard.PlayerNames))
-		curEntry.IsSuggestionOver = true
 
 		numOfQuests := globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].NumOfQuests
 		if globalBoard.quests.current+1 == numOfQuests { //last quest in game
@@ -193,60 +189,9 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 		if globalBoard.isSuggestionGood > globalBoard.isSuggestionBad {
 
-			/*
-				Gawain's logic: If it's the last quest, the suggestion was accepted
-				and Gawain is included - he WINS the game!
-			*/
-			if gawainPlayer, exists := isCharacterExists(true, "Gawain"); exists {
-				if globalBoard.quests.current + 1 == numOfQuests {
-					for _, c := range globalBoard.suggestions.SuggestedPlayers {
-						if c == gawainPlayer.Player {
-							globalBoard.State = VictoryForGawain
-							globalMutex.Unlock()
-							return
-						}
-					}
-				}
+			if HandleAcceptedSuggestion(numOfQuests, curEntry) {
+				return
 			}
-			globalBoard.State = JorneyVoting
-			globalBoard.StateDescription = "The Quest was accepted. The Vote for Quest " + strconv.Itoa(globalBoard.quests.current+1) + " is starting now... "
-			curEntry.IsSuggestionAccepted = true
-			globalBoard.suggestions.LastUnsuccessfulRetries = globalBoard.suggestions.unsuccessfulRetries
-			globalBoard.suggestions.unsuccessfulRetries = 0
-			globalBoard.LastQuestStage = globalBoard.QuestStage
-			globalBoard.QuestStage += 0.01
-			globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
-
-			if _, exists := isCharacterExists(true, Viviana); exists {
-				/* Suggestion was accepted, viviana get a new secret about the suggester. */
-				UncoverSuggesterToViviana()
-			}
-
-			if globalBoard.quests.Flags[HAS_BALAIN_AND_BALIN] {
-				balinPlayer := globalBoard.CharacterToPlayer[Balin]
-				balainPlayer := globalBoard.CharacterToPlayer[Balain]
-				balinIsSuggestion := false
-				balainIsSuggestion := false
-				for _, c := range globalBoard.suggestions.SuggestedPlayers {
-					if c == balinPlayer.Player {
-						balinIsSuggestion = true
-					}
-					if c == balainPlayer.Player {
-						balainIsSuggestion = true
-					}
-				}
-				if balainIsSuggestion && balinIsSuggestion {
-					globalBoard.CharacterToPlayer[Balain] = balinPlayer
-					globalBoard.CharacterToPlayer[Balin] = balainPlayer
-					globalBoard.PlayerToCharacter[balinPlayer] = Balain
-					globalBoard.PlayerToCharacter[balainPlayer] = Balin
-				}
-
-			}
-
-			numOfUnsuccesfulRetries := globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]
-			suggesterVetoIn := (globalBoard.suggestions.suggesterIndex + 1 + numOfUnsuccesfulRetries) % len(globalBoard.PlayerNames)
-			globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[suggesterVetoIn].Player
 		} else {
 			globalBoard.State = WaitingForSuggestion
 
@@ -266,6 +211,77 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 	globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 
 	globalMutex.Unlock()
+}
+
+func HandleAcceptedSuggestion(numOfQuests int, curEntry QuestArchiveItem) bool {
+	/*
+		Gawain's logic: If it's the last quest, the suggestion was accepted
+		and Gawain is included - he WINS the game!
+	*/
+	if gawainPlayer, exists := isCharacterExists(true, "Gawain"); exists {
+		if globalBoard.quests.current+1 == numOfQuests {
+			for _, c := range globalBoard.suggestions.SuggestedPlayers {
+				if c == gawainPlayer.Player {
+					globalBoard.State = VictoryForGawain
+					globalBoard.StateDescription = "VICTORY for Gawain"
+					globalMutex.Unlock()
+					return true
+				}
+			}
+		}
+	}
+
+	isPellinoreInQuest := false
+	isBeastInQuest := false
+	for _, c := range globalBoard.suggestions.SuggestedPlayers {
+		if c == Pellinore {
+			isPellinoreInQuest = true
+		}
+		if c == TheQuestingBeast {
+			isBeastInQuest = true
+		}
+	}
+	if isPellinoreInQuest && isBeastInQuest {
+		globalBoard.quests.Flags[BEAST_AND_PELLINORE_AT_SAME_QUEST] = true
+	}
+	globalBoard.State = JorneyVoting
+	globalBoard.StateDescription = "The Quest was accepted. The Vote for Quest " + strconv.Itoa(globalBoard.quests.current+1) + " is starting now... "
+	curEntry.IsSuggestionAccepted = true
+	globalBoard.suggestions.unsuccessfulRetries = 0
+	globalBoard.LastQuestStage = globalBoard.QuestStage
+	globalBoard.QuestStage += 0.01
+	globalBoard.QuestStage = float32(math.Ceil(float64(globalBoard.QuestStage)))
+
+	if _, exists := isCharacterExists(true, Viviana); exists {
+		/* Suggestion was accepted, viviana get a new secret about the suggester. */
+		UncoverSuggesterToViviana()
+	}
+
+	if globalBoard.quests.Flags[HAS_BALAIN_AND_BALIN] {
+		balinPlayer := globalBoard.CharacterToPlayer[Balin]
+		balainPlayer := globalBoard.CharacterToPlayer[Balain]
+		balinIsSuggestion := false
+		balainIsSuggestion := false
+		for _, c := range globalBoard.suggestions.SuggestedPlayers {
+			if c == balinPlayer.Player {
+				balinIsSuggestion = true
+			}
+			if c == balainPlayer.Player {
+				balainIsSuggestion = true
+			}
+		}
+		if balainIsSuggestion && balinIsSuggestion {
+			globalBoard.CharacterToPlayer[Balain] = balinPlayer
+			globalBoard.CharacterToPlayer[Balin] = balainPlayer
+			globalBoard.PlayerToCharacter[balinPlayer] = Balain
+			globalBoard.PlayerToCharacter[balainPlayer] = Balin
+		}
+	}
+
+	numOfUnsuccesfulRetries := globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]
+	suggesterVetoIn := (globalBoard.suggestions.suggesterIndex + 1 + numOfUnsuccesfulRetries) % len(globalBoard.PlayerNames)
+	globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[suggesterVetoIn].Player
+	return false
 }
 
 func UncoverSuggesterToViviana() {

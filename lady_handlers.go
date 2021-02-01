@@ -80,7 +80,7 @@ func LadyResponseHandler(loyalty int) {
 	globalMutex.Lock()
 	globalBoard.State = LadySuggesterPublishResponseToWorld
 	globalBoard.ladyOfTheLake.ladyResponse = loyalty
-	globalBoard.StateDescription = "Lady Of The Lake: " + " got Lady Response. Waiting for his publication..."
+	globalBoard.StateDescription = "Lady Of The Lake: " + globalBoard.ladyOfTheLake.currentSuggester + " got response from " + globalBoard.ladyOfTheLake.currentChosenPlayer +". Waiting for his publication..."
 	globalMutex.Unlock()
 }
 

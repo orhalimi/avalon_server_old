@@ -56,6 +56,7 @@ func HandleJourneyVote(vote VoteForJourney) {
 
 	origVote := vote.Vote
 	if origVote == VoteBeast {
+		globalBoard.quests.Flags[BEAST_VOTE_SEEN] = true
 		origVote = VoteFail
 	}
 	log.Println(vote.PlayerName, " voted ", vote.Vote)
@@ -86,55 +87,24 @@ func HandleJourneyVote(vote VoteForJourney) {
 		curEntry.NumberOfReversal++
 	}
 
-	if len(mp) == requiredVotes { //last vote
-		for _, vote := range mp {
-			if vote == VoteAvalonPower {
-				globalBoard.State = WaitingForSuggestion
-				suggesterIndex := globalBoard.suggestions.suggesterIndex
-				globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
-					" is choosing players..."
-
-				curEntry.AvalonPower = true
-
-				playerWithVeto := globalBoard.suggestions.PlayerWithVeto
-				vetoIndex := 0
-				for i, p := range globalBoard.PlayerNames {
-					if playerWithVeto == p.Player {
-						vetoIndex = i + 1
-						break
-					}
-				}
-				vetoIndex = vetoIndex % len(globalBoard.PlayerNames)
-				globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[vetoIndex].Player
-
-				globalBoard.suggestions.unsuccessfulRetries = globalBoard.suggestions.LastUnsuccessfulRetries
-				globalBoard.quests.playerVotedForCurrentQuest = make([]string, 0)
-				globalBoard.quests.playerVotedForCurrent = make(map[string]int)
-				globalBoard.votesForNextMission = make(map[string]bool) //for suggestions
-				globalBoard.suggestions.SuggestedPlayers = make([]string, 0)
-				globalBoard.quests.playersVotes[current] = make([]int, 0)
-				globalBoard.archive[len(globalBoard.archive)-1] = curEntry
-
-				globalBoard.QuestStage = globalBoard.LastQuestStage
-
-				globalMutex.Unlock()
-				return
-			}
-		}
-	}
 
 	if len(mp) == requiredVotes { //last vote
 		if _, ok := globalBoard.quests.Flags[EXCALIBUR]; ok {
 			globalBoard.State = ExcaliburPick
 			//update info
 			globalBoard.StateDescription = "Excalibur: " + globalBoard.suggestions.excalibur.Player +
-				" is choosing vote to reverse..."
+				" is deciding whether to reverse some vote or not..."
 			globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 			globalBoard.quests.results[current+1] = res
 			globalBoard.quests.playersVotes[current] = mp
 			globalMutex.Unlock()
 			return
 		}
+
+		if StartNewSuggestion(mp, curEntry, current) {
+			return
+		}
+
 		EndJourney(&res, mp, &curEntry, current)
 	}
 
@@ -146,6 +116,43 @@ func HandleJourneyVote(vote VoteForJourney) {
 		globalBoard.quests.current++
 	}
 	globalMutex.Unlock()
+}
+
+func StartNewSuggestion(mp []int, curEntry QuestArchiveItem, current int) bool {
+	for _, vote := range mp {
+		if vote == VoteAvalonPower {
+			globalBoard.State = WaitingForSuggestion
+			suggesterIndex := globalBoard.suggestions.suggesterIndex
+			globalBoard.StateDescription = "Suggestion For Next Quest: " + globalBoard.PlayerNames[suggesterIndex].Player +
+				" is choosing players..."
+
+			curEntry.AvalonPower = true
+
+			playerWithVeto := globalBoard.suggestions.PlayerWithVeto
+			vetoIndex := 0
+			for i, p := range globalBoard.PlayerNames {
+				if playerWithVeto == p.Player {
+					vetoIndex = i + 1
+					break
+				}
+			}
+			vetoIndex = vetoIndex % len(globalBoard.PlayerNames)
+			globalBoard.suggestions.PlayerWithVeto = globalBoard.PlayerNames[vetoIndex].Player
+
+			globalBoard.quests.playerVotedForCurrentQuest = make([]string, 0)
+			globalBoard.quests.playerVotedForCurrent = make(map[string]int)
+			globalBoard.votesForNextMission = make(map[string]bool) //for suggestions
+			globalBoard.suggestions.SuggestedPlayers = make([]string, 0)
+			globalBoard.quests.playersVotes[current] = make([]int, 0)
+			globalBoard.archive[len(globalBoard.archive)-1] = curEntry
+
+			globalBoard.QuestStage = globalBoard.LastQuestStage
+
+			globalMutex.Unlock()
+			return true
+		}
+	}
+	return false
 }
 
 func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current int) {
@@ -196,6 +203,7 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 		pendingMurders, hasMurders := GetMurdersAfterGoodsWins()
 		if !hasMurders {
 			globalBoard.State = VictoryForGood
+			globalBoard.StateDescription = "VICTORY for Goods"
 		} else {
 			fmt.Println(pendingMurders)
 			globalBoard.State = MurdersAfterGoodVictory
@@ -209,6 +217,7 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 		pendingMurders, hasMurders := GetMurdersAfterBadsWins()
 		if !hasMurders {
 			globalBoard.State = VictoryForBad
+			globalBoard.StateDescription = "VICTORY for Bads"
 		} else {
 			globalBoard.State = MurdersAfterBadVictory
 			globalBoard.PendingMurders = pendingMurders
