@@ -6,11 +6,6 @@ import (
 )
 
 
-const (
-	mongoUrl = "localhost:27017"
-	dbName = "test_db"
-	userCollectionName = "user"
-)
 type MockHash struct{}
 
 func (h *MockHash) Generate(s string) (string, error) {

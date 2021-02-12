@@ -243,9 +243,9 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 					globalBoard.PlayerToCharacter[lanGood] = LancelotBad
 					curEntry.IsSwitchLancelot = true
 					//fix bug of viviana that seeother lanselot
-					/*for i, pl := range globalBoard.playersWithBadCharacter {
+					/*for i, pl := range globalBoard.PlayersWithBadCharacter {
 						if pl == lanBad.Player {
-							globalBoard.playersWithBadCharacter[i] = lanGood.Player
+							globalBoard.PlayersWithBadCharacter[i] = lanGood.Player
 							break
 						}
 					}
@@ -305,6 +305,7 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 	globalBoard.quests.playerVotedForCurrent = make(map[string]int)
 	globalBoard.votesForNextMission = make(map[string]bool) //for suggestions
 	globalBoard.suggestions.SuggestedPlayers = make([]string, 0)
+	globalBoard.suggestions.OnlyGoodSuggested = false
 }
 
 func isBadVictory(numOfUnsuccessfulQuests, numOfExpectedQuests int) bool {

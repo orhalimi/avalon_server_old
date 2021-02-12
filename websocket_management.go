@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
+	"runtime"
 )
 
 
@@ -26,11 +28,18 @@ type PlayerGone struct {
 }
 
 func (manager *ClientManager) start() {
+	defer func() {
+		//debug.PrintStack()
+		log.Println("manager start thread termination. fatal error")
+		buf := make([]byte, 1<<16)
+		runtime.Stack(buf, true)
+		log.Println("%s", buf)
+	}()
 	for {
-		log.Println("con register")
+		log.Println("inside MANAGER loop")
 		select {
 		case conn := <-manager.register:
-			log.Println("registerss")
+			log.Println("register new connection")
 			if _, ok := manager.clients[conn]; !ok {
 				globalMutex.Lock()
 				found := false
@@ -40,7 +49,7 @@ func (manager *ClientManager) start() {
 					}
 				}
 				if !found && (globalBoard.State == NotStarted || (globalBoard.State >= VictoryForGood && globalBoard.State <= VictoryForGawain)) {
-					log.Println("Add", conn.id)
+					log.Println("Adding", conn.id, " to player names list")
 					globalBoard.PlayerNames = append(globalBoard.PlayerNames, PlayerName{conn.id})
 				}
 
@@ -50,17 +59,17 @@ func (manager *ClientManager) start() {
 				manager.send(jsonMessage, conn)
 			}
 		case conn := <-manager.unregister:
-			log.Println("con unregister")
+			log.Println("unregister connection")
 			if _, ok := manager.clients[conn]; ok {
 				globalMutex.Lock()
 				//playerName, ok := globalBoard.clientIdToPlayerName[conn.id]
 				if ok {
-					log.Println("close", globalBoard.PlayerNames)
+					log.Println("unregister ", conn.id)
 					if globalBoard.State == NotStarted || (globalBoard.State >= VictoryForGood && globalBoard.State <= VictoryForGawain) {
 						index := SliceIndex(len(globalBoard.PlayerNames), func(i int) bool { return globalBoard.PlayerNames[i] == PlayerName{conn.id} })
 						if index >= 0 {
 							globalBoard.PlayerNames = removePlayer(globalBoard.PlayerNames, index)
-							log.Println("close", index, globalBoard.PlayerNames)
+							log.Println(conn.id, " was removed for player names list: ", globalBoard.PlayerNames)
 						}
 					}
 
@@ -69,7 +78,6 @@ func (manager *ClientManager) start() {
 
 				ls := ListOfPlayersResponse{Total: len(globalBoard.PlayerNames), Players: globalBoard.PlayerNames}
 				playersMsg, _ := json.Marshal(&PlayerGone{Type: "bla", Players: ls})
-				//log.Println(string(playersMsg))
 				globalMutex.Unlock()
 				manager.send(playersMsg, conn)
 
@@ -79,7 +87,7 @@ func (manager *ClientManager) start() {
 				manager.send(jsonMessage, conn)
 			}
 		case message := <-manager.broadcast:
-			log.Println("con broadcast")
+			log.Println("send broadcast message")
 			var msg Message
 			json.Unmarshal(message, &msg)
 			for conn := range manager.clients {
@@ -93,6 +101,12 @@ func (manager *ClientManager) start() {
 					gm := GetGameState(conn.id)
 					jsonMessage, _ := json.Marshal(&gm)
 					//log.Println(string(jsonMessage))
+
+					log.Println("Going to send the following state to ", conn.id)
+					var prettyJSON bytes.Buffer
+					json.Indent(&prettyJSON, jsonMessage, "", "\t")
+					log.Println("Game State:", string(prettyJSON.Bytes()))
+
 					message, _ = json.Marshal(&Message{Sender: msg.Sender, Content: string(jsonMessage)})
 				}
 
@@ -109,6 +123,7 @@ func (manager *ClientManager) start() {
 
 func (c *Client) write() {
 	defer func() {
+		log.Println("client:", c.id, " write error. terminate thread")
 		c.socket.Close()
 	}()
 
@@ -128,7 +143,7 @@ func (c *Client) write() {
 func (c *Client) read() {
 	defer func() {
 		//globalBoard.manager.unregister <- c
-		log.Println("defer")
+		log.Println("client ", c.id, " read end (probably socket closed)")
 		//c.socket.Close()
 	}()
 	log.Println("client read start")
@@ -136,11 +151,11 @@ func (c *Client) read() {
 		_, message, err := c.socket.ReadMessage()
 		notifyAll := false
 		if err != nil {
-			log.Println("bluppp")
+			log.Println("socket read failure")
 
 			globalMutex.Lock()
 			if (globalBoard.State == 0 || (globalBoard.State >= VictoryForGood && globalBoard.State <= VictoryForGawain)) && len(globalBoard.PlayerNames) > 0 {
-				log.Println("close from error", globalBoard.PlayerNames)
+				log.Println("no game yet so we can remove player from player list: ", globalBoard.PlayerNames)
 				index := SliceIndex(len(globalBoard.PlayerNames), func(i int) bool { return globalBoard.PlayerNames[i] == PlayerName{c.id} })
 				if index > -1 {
 					globalBoard.PlayerNames = removePlayer(globalBoard.PlayerNames, index)
@@ -164,6 +179,7 @@ func (c *Client) read() {
 		tp := dd["type"]
 		isGameCommand := false
 		recipient := ""
+		log.Println("successfully read message. client:", c.id, ". type: ", tp)
 		if tp == "add_player" {
 
 			isGameCommand = true
@@ -254,10 +270,11 @@ func (c *Client) read() {
 			globalBoard = BoardGame{
 				QuestStage:               1,
 				lancelotCards:            make([]int, 7),
-				playersWithBadCharacter:  make([]string, 0),
+				PlayersWithBadCharacter:  make([]string, 0),
 				playersWithGoodCharacter: make([]string, 0),
 				playersWithCharacters: 	make(map[string]string),
 				Secrets:                  make(map[string][]string),
+				SecretsMap: map[string]*PlayerSecrets{},
 				clientIdToPlayerName:     globalBoard.clientIdToPlayerName,
 				manager:                  globalBoard.manager,
 				PlayerToMurderInfo:       make(map[string]MurderInfo),

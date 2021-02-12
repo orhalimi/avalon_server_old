@@ -22,9 +22,9 @@ func GetNightSecretsFromPlayerName(player PlayerName) SecretResponse {
 	response.Secrets = globalBoard.Secrets[player.Player]
 
 	if character == Viviana {
-		log.Println(globalBoard.playersWithBadCharacter)
+		log.Println(globalBoard.PlayersWithBadCharacter)
 		log.Println(globalBoard.playersWithGoodCharacter)
-		response.PlayersWithBadCharacter = globalBoard.playersWithBadCharacter
+		response.PlayersWithBadCharacter = globalBoard.PlayersWithBadCharacter
 		response.PlayersWithGoodCharacter = globalBoard.playersWithGoodCharacter
 		response.PlayersWithCharacters = globalBoard.playersWithCharacters
 		response.Secrets = globalBoard.Secrets[player.Player]
@@ -64,6 +64,8 @@ type GameState struct {
 	StateDescription          string                            `json:"stateDescription"`
 	Archive                   []QuestArchiveItem              `json:"archive"`
 	Secrets                   SecretResponse                  `json:"secrets"`
+	PlayerSecrets             PlayerSecrets                  `json:"playerSecrets"`
+
 	Suggester                 string                          `json:"suggester,omitempty"`
 	Murder                    Murder                          `json:"murder,omitempty"`
 
@@ -97,6 +99,13 @@ func GetGameState(clientId string) GameState {
 	globalMutex.RLock()
 	board := GameState{}
 
+	if clientId == "" {
+		return board
+	}
+
+	if globalBoard.State > NotStarted && globalBoard.SecretsMap[clientId] != nil {
+		board.PlayerSecrets = *globalBoard.SecretsMap[clientId]
+	}
 	// Seer's two options to see: the player before or after.
 	if globalBoard.State == SirPickPlayer && globalBoard.CharacterToPlayer[Seer].Player == clientId {
 		seerOptions := getSeerOptions(clientId)

@@ -262,16 +262,35 @@ type QuestSuggestionsManager struct {
 	excalibur                 Excalibur
 }
 
+type CharacterName string
+type Player string
+
+type PlayerSecrets struct {
+	PlayersWithSameLoyalty []string `json:"PlayersWithSameLoyalty"`
+	PlayersWithDifferentLoyalty []string `json:"PlayersWithDifferentLoyalty"`
+	PlayersWithGoodCharacter []string `json:"PlayersWithGoodCharacter"`
+	PlayersWithBadCharacter  []string `json:"PlayersWithBadCharacter"`
+	PlayersWithUncoveredCharacters  map[string]string `json:"PlayersWithUncoveredCharacters"`
+	PlayerSee  string `json:"PlayersSee"`
+	Seen string `json:"Seen"`
+	PlayerSee2  string `json:"PlayersSee2"`
+	Seen2 string `json:"Seen2"`
+}
 
 type BoardGame struct {
 	whoSeeWho map[string]map[string]bool
 	clientIdToPlayerName map[string]PlayerName
 
 	numOfPlayers			int
+	numOfConnectedPlayers	int
 	ladyOfTheLake            LadyStats
+
 	playersWithGoodCharacter []string //for vivian
-	playersWithBadCharacter  []string //for vivian
+	PlayersWithBadCharacter  []string //for vivian
 	playersWithCharacters  map[string]string //for vivian
+
+	SecretsMap				map[string]*PlayerSecrets
+
 	Secrets                  map[string][]string
 	PlayerNames              []PlayerName `json:"players,omitempty"`
 	PlayerToCharacter        map[PlayerName]string
@@ -297,13 +316,14 @@ type BoardGame struct {
 }
 
 var globalBoard = BoardGame{
-	playersWithBadCharacter:  make([]string, 0),
+	PlayersWithBadCharacter:  make([]string, 0),
 	playersWithGoodCharacter: make([]string, 0),
 	playersWithCharacters: make(map[string]string),
 	clientIdToPlayerName:     make(map[string]PlayerName),
 	QuestStage:               1,
 	lancelotCards:            make([]int, 7),
 	Secrets:                  make(map[string][]string),
+	SecretsMap: 				make(map[string]*PlayerSecrets),
 	PlayerToMurderInfo:       make(map[string]MurderInfo),
 	quests: QuestManager{
 		current:                    0,

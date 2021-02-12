@@ -87,6 +87,12 @@ func LadyResponseHandler(loyalty int) {
 func LadyPublishResponseHandler(loyalty int) {
 	log.Println("got lady publish response:", loyalty)
 	globalMutex.Lock()
+	defer globalMutex.Unlock()
+
+	if globalBoard.State != LadySuggesterPublishResponseToWorld {
+		return
+	}
+
 	curEntry := globalBoard.archive[len(globalBoard.archive)-1] //Stats table
 	if loyalty == 1 {
 		curEntry.LadySuggesterPublishToTheWorld = "Good"
@@ -101,5 +107,5 @@ func LadyPublishResponseHandler(loyalty int) {
 	globalBoard.ladyOfTheLake.currentSuggester = globalBoard.ladyOfTheLake.currentChosenPlayer
 	globalBoard.ladyOfTheLake.currentChosenPlayer = ""
 	globalBoard.ladyOfTheLake.ladyResponse = -1
-	globalMutex.Unlock()
+
 }

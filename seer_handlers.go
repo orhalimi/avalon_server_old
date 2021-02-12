@@ -29,7 +29,7 @@ func HandleSir(m SirMessageInternal) {
 	character := globalBoard.PlayerToCharacter[PlayerName{pick}]
 	SirPlayer := globalBoard.CharacterToPlayer[Seer]
 	globalBoard.Secrets[SirPlayer.Player] = append(globalBoard.Secrets[SirPlayer.Player], pick+" is "+character)
-
+	globalBoard.SecretsMap[SirPlayer.Player].PlayersWithUncoveredCharacters[pick] = character
 
 	if BlanchefleurPlayer, ok := globalBoard.CharacterToPlayer[Blanchefleur]; ok  {
 		seerMap := make(map[string]bool)

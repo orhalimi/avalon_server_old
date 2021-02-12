@@ -54,14 +54,12 @@ func wsPage(res http.ResponseWriter, req *http.Request) {
 		http.NotFound(res, req)
 		return
 	}
-	log.Println("wow2")
 
 	//uuid,_:= uuid.NewV4()
 	client := &Client{id: userName, socket: conn, send: make(chan []byte)}
-	log.Println("wow3")
 	globalBoard.manager.register <- client
 
-	log.Println("start threads")
+	log.Println("new socket. start client read and write threads")
 	go client.read()
 	go client.write()
 

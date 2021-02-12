@@ -120,14 +120,13 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 	} else {
 		globalBoard.numOfPlayers = len(globalBoard.PlayerNames)
 	}
+	globalBoard.numOfConnectedPlayers = len(globalBoard.PlayerNames)
 	globalBoard.Characters = chosenCharacters
-	var hasMeliagant bool
-	if _, ok := globalBoard.CharacterToPlayer[Meliagant]; ok {
-		hasMeliagant = true
-	}
+
+	_, hasMeliagant := isCharacterExists(true, Meliagant)
+
 	for i := 0; i < globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].NumOfQuests; i++ {
 		en := QuestStats{}
-		log.Println(i)
 		en.Ppp = getTypeOfLevel(i+1, len(globalBoard.PlayerNames))
 		en.NumOfPlayers = globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].PlayersPerLevel[i]
 		if hasMeliagant {
@@ -144,7 +143,7 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 
 	WhoSeeWho := make(map[string]map[string]bool)
 	for _, player := range globalBoard.PlayerNames {
-		globalBoard.Secrets[player.Player], globalBoard.whoSeeWho = GetSecretsFromPlayerName(player, WhoSeeWho)
+		globalBoard.SecretsMap[player.Player], globalBoard.Secrets[player.Player], globalBoard.whoSeeWho = GetSecretsFromPlayerName(player, WhoSeeWho)
 		log.Println(player, " Secrets     =     ", globalBoard.Secrets[player.Player])
 		log.Println(player, " WhoSeeWho     =     ", WhoSeeWho)
 	}
@@ -152,6 +151,9 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 	_, hasSeer := globalBoard.CharacterToPlayer[Seer]
 	if BlanchefleurPlayer, ok := globalBoard.CharacterToPlayer[Blanchefleur]; ok && !hasSeer {
 		secrets := make([]string, 0)
+		secrets_tmp := make([]string, 0)
+		tmp := make(map[string]string)
+
 		keys := make([]string, 0)
 
 		for k := range WhoSeeWho {
@@ -194,6 +196,10 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 		}
 
 		secrets = append(secrets, TruePlayer.Player + " see " + See)
+		secrets_tmp = append(secrets_tmp, TruePlayer.Player)
+		tmp[TruePlayer.Player] = See
+		//globalBoard.SecretsMap[BlanchefleurPlayer.Player].PlayerSeePlayer[TruePlayer.Player] = See
+
 		log.Println(TruePlayer.Player + " see " + See)
 
 		random3 := rand.Intn(len(globalBoard.Characters))
@@ -225,11 +231,27 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 		log.Println("random4 = ", random4)
 		secrets = append(secrets, FalsePlayer.Player + " see " + unseenplayers[random4])
 
+		secrets_tmp = append(secrets_tmp, FalsePlayer.Player)
+		tmp[FalsePlayer.Player] = unseenplayers[random4]
+
+
 		rand.Seed(int64(time.Now().Nanosecond()))
 		rand.Shuffle(len(secrets), func(i, j int) {
 			secrets[i], secrets[j] = secrets[j], secrets[i]
 		})
+
+		rand.Seed(int64(time.Now().Nanosecond()))
+		rand.Shuffle(len(secrets_tmp), func(i, j int) {
+			secrets_tmp[i], secrets_tmp[j] = secrets_tmp[j], secrets_tmp[i]
+		})
+
 		log.Println("secrets = ", secrets)
+		globalBoard.SecretsMap[BlanchefleurPlayer.Player].PlayerSee =  secrets_tmp[0]
+		globalBoard.SecretsMap[BlanchefleurPlayer.Player].Seen = tmp[secrets_tmp[0]]
+
+		globalBoard.SecretsMap[BlanchefleurPlayer.Player].PlayerSee2 =  secrets_tmp[1]
+		globalBoard.SecretsMap[BlanchefleurPlayer.Player].Seen2 = tmp[secrets_tmp[1]]
+
 		globalBoard.Secrets[BlanchefleurPlayer.Player] = secrets
 	}
 
@@ -255,21 +277,28 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 }
 
 
-func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string]bool) ([]string, map[string]map[string]bool) {
+func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string]bool) (*PlayerSecrets, []string, map[string]map[string]bool) {
 
 	secrets := make([]string, 0)
 	if player.Player == "" {
-		return nil, whoSeeWho
+		return &PlayerSecrets{}, nil, whoSeeWho
 	}
+	playerSecret := PlayerSecrets{PlayersWithSameLoyalty: make([]string, 0),
+		PlayersWithDifferentLoyalty: make([]string, 0),
+		PlayersWithGoodCharacter: make([]string, 0),
+		PlayersWithBadCharacter: make([]string, 0),
+		PlayersWithUncoveredCharacters: make(map[string]string)}
 
 	strayPlayer, _ := globalBoard.CharacterToPlayer[Stray]
 	character := globalBoard.PlayerToCharacter[player]
-
 
 	if character == Gornemant {
 		bads := make([]string, 0)
 		goods := make([]string, 0)
 		for _, c := range globalBoard.Characters {
+			if c == Stray {
+				c = globalBoard.PlayerToCharacter[strayPlayer]
+			}
 			if _, ok := goodCharacters[c]; ok {
 				goods = append(goods, c)
 			} else {
@@ -290,35 +319,11 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		log.Println("sameTeam =", sameTeam, "len=", len(sameTeam))
 		log.Println("notSameTeam =", notSameTeam, "len=", len(notSameTeam))
 
-		//remove this player from both arrays!!!!
-		idx := 0
-		isFound:=false
-		for _, s := range sameTeam {
-			if s != player.Player {
-				idx++
-			} else {
-				isFound = true
-				break
-			}
-		}
-		if isFound {
-			sameTeam = removeElementFromStringSlice(sameTeam, idx)
-		}
+		sameTeam = removeElementFromSlice(player, sameTeam)
 
-		idx = 0
-		isFound= false
-		for _, s := range notSameTeam {
-			if s != player.Player {
-				idx++
-			} else {
-				isFound = true
-				break
-			}
-		}
-		if isFound {
-			notSameTeam = removeElementFromStringSlice(notSameTeam, idx)
-			//end of this removal
-		}
+		notSameTeam = removeElementFromSlice(player, notSameTeam)
+
+
 		random1 := rand.Intn(len(sameTeam))
 		random2 := rand.Intn(len(sameTeam))
 		Player1 := globalBoard.CharacterToPlayer[sameTeam[random1]].Player
@@ -328,13 +333,15 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 			Player2 = globalBoard.CharacterToPlayer[sameTeam[random2]].Player
 		}
 
-		log.Println("random1 =", random1, " random2 = " , random2)
+		log.Println("random1 =", random1, " random2 = ", random2)
 
-		secrets = append(secrets, Player1 + " and " + Player2)
+		secrets = append(secrets, Player1+" and "+Player2)
+		playerSecret.PlayersWithSameLoyalty = []string{Player1, Player2}
+
 		sameTeam = removeElementFromStringSlice(sameTeam, random1)
 
-		idx = 0
-		isFound = false
+		idx := 0
+		isFound := false
 		for i, _ := range sameTeam {
 			if Player2 != globalBoard.CharacterToPlayer[sameTeam[i]].Player {
 				idx++
@@ -350,16 +357,18 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		log.Println("new sameTeam =", sameTeam)
 		random3 := rand.Intn(len(notSameTeam))
 		random4 := rand.Intn(len(sameTeam))
-		log.Println("random3 =", random3, " random4 = " , random4)
+		log.Println("random3 =", random3, " random4 = ", random4)
 		Player3 := globalBoard.CharacterToPlayer[notSameTeam[random3]].Player
 		Player4 := globalBoard.CharacterToPlayer[sameTeam[random4]].Player
-		secrets = append(secrets, Player3 + " and " + Player4)
+
+		secrets = append(secrets, Player3+" and "+Player4)
+		playerSecret.PlayersWithDifferentLoyalty = []string{Player3, Player4}
 	}
 
 	if character == Meliagant {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 
 		for k, v := range globalBoard.CharacterToPlayer {
@@ -367,14 +376,18 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 			if _, ok := badCharacters[k]; ok {
 				if v.Player == strayPlayer.Player {
 					secrets = append(secrets, v.Player+" is Stray")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = Stray
+
 				} else {
-					secrets = append(secrets, v.Player+" is " + k)
+					secrets = append(secrets, v.Player+" is "+k)
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = k
 				}
 
 				mapp[v.Player] = true
 			} else {
 				if k == Lot {
 					secrets = append(secrets, v.Player+" is Lot")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = Lot
 					mapp[v.Player] = true
 				}
 			}
@@ -382,52 +395,53 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		whoSeeWho[Meliagant] = mapp
 	}
 
-
-
-
-
-
-
 	if character == Merlin {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
-
 
 		for k, v := range globalBoard.CharacterToPlayer {
 
 			if _, ok := badCharacters[k]; ok && k != Mordred && k != Accolon {
 				if k == Oberon {
 					secrets = append(secrets, v.Player+" is Oberon")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = Oberon
 					mapp[v.Player] = true
 				} else {
 					secrets = append(secrets, v.Player+" is bad")
+					playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 					mapp[v.Player] = true
 				}
 			}
 			if k == Stray {
 				secrets = append(secrets, v.Player+" is Stray")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Stray
 				mapp[v.Player] = true
 			}
 			if k == Lot {
 				secrets = append(secrets, v.Player+" is Lot")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Lot
 				mapp[v.Player] = true
 			}
 			if k == Meliagant {
 				secrets = append(secrets, v.Player+" is bad")
+				playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 				mapp[v.Player] = true
 			}
 			if k == "Ginerva" {
 				secrets = append(secrets, v.Player+" is bad")
+				playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 				mapp[v.Player] = true
 			}
 			if k == SirKay {
 				secrets = append(secrets, v.Player+" is bad")
+				playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 				mapp[v.Player] = true
 			}
 			if k == "Gawain" {
 				secrets = append(secrets, v.Player+" is Gawain")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Gawain"
 				mapp[v.Player] = true
 			}
 		}
@@ -437,9 +451,10 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		if nirlem, ok := globalBoard.CharacterToPlayer[Nirlem]; ok && character != LancelotGood && character != Balain {
 			mapp := whoSeeWho[character]
 			if mapp == nil {
-				mapp= make (map[string]bool)
+				mapp = make(map[string]bool)
 			}
 			secrets = append(secrets, nirlem.Player+" is Nirlem")
+			playerSecret.PlayersWithUncoveredCharacters[nirlem.Player] = Nirlem
 			mapp[nirlem.Player] = true
 			whoSeeWho[character] = mapp
 		}
@@ -447,15 +462,17 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Guinevere {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == LancelotGood {
 				secrets = append(secrets, v.Player+" is Lancelot")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Lancelot"
 				mapp[v.Player] = true
 			}
 			if k == LancelotBad {
 				secrets = append(secrets, v.Player+" is Lancelot")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Lancelot"
 				mapp[v.Player] = true
 			}
 		}
@@ -464,11 +481,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Iseult {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Tristan {
 				secrets = append(secrets, v.Player+" is Tristan")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Tristan
 				mapp[v.Player] = true
 			}
 		}
@@ -477,11 +495,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Balin {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Balain {
 				secrets = append(secrets, v.Player+" is Balain")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Balain
 				mapp[v.Player] = true
 			}
 		}
@@ -490,11 +509,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Balain {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Balin {
 				secrets = append(secrets, v.Player+" is Balin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Balin
 				mapp[v.Player] = true
 			}
 		}
@@ -503,11 +523,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == PrinceClaudin {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == KingClaudin {
 				secrets = append(secrets, v.Player+" is King-Claudin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = KingClaudin
 				mapp[v.Player] = true
 			}
 		}
@@ -516,11 +537,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == KingClaudin {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == PrinceClaudin {
 				secrets = append(secrets, v.Player+" is Prince-Claudin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = PrinceClaudin
 				mapp[v.Player] = true
 			}
 		}
@@ -530,15 +552,17 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == MerlinApprentice {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Percival {
 				secrets = append(secrets, v.Player+" is Percival/Assasin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "PercivalAssasin"
 				mapp[v.Player] = true
 			}
 			if k == Assassin {
 				secrets = append(secrets, v.Player+" is Percival/Assassin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "PercivalAssasin"
 				mapp[v.Player] = true
 			}
 		}
@@ -547,11 +571,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Tristan {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Iseult {
 				secrets = append(secrets, v.Player+" is Iseult")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Iseult
 				mapp[v.Player] = true
 			}
 		}
@@ -560,15 +585,17 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Lot {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if _, ok := badCharacters[k]; (ok && k != character && k != Oberon && k != Accolon) || k == Meliagant {
 				if k == "Polygraph" {
 					secrets = append(secrets, v.Player+" is polygraph")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Polygraph"
 					mapp[v.Player] = true
 				} else {
 					secrets = append(secrets, v.Player+" is bad")
+					playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 					mapp[v.Player] = true
 				}
 			}
@@ -578,15 +605,17 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Nimue {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Galahad {
 				secrets = append(secrets, v.Player+" is Galahad")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Galahad
 				mapp[v.Player] = true
 			}
 			if k == Merlin {
 				secrets = append(secrets, v.Player+" is Merlin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Merlin
 				mapp[v.Player] = true
 			}
 		}
@@ -595,11 +624,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Nerzhul {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Oberon {
-				secrets = append(secrets, v.Player + " is Oberon")
+				secrets = append(secrets, v.Player+" is Oberon")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Oberon
 				mapp[v.Player] = true
 			}
 		}
@@ -608,11 +638,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Dagonet {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Oberon {
-				secrets = append(secrets, v.Player + " is Oberon")
+				secrets = append(secrets, v.Player+" is Oberon")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Oberon
 				mapp[v.Player] = true
 			}
 		}
@@ -621,11 +652,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Morgana {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == "Gawain" {
 				secrets = append(secrets, v.Player+" is Gawain")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Gawain"
 				mapp[v.Player] = true
 			}
 		}
@@ -634,25 +666,29 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == Percival {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Morgana {
 				if _, ok := globalBoard.CharacterToPlayer[Merlin]; !ok {
 					secrets = append(secrets, v.Player+" is Morgana/Viviana")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = "MorganaViviana"
 					mapp[v.Player] = true
 				} else {
 					secrets = append(secrets, v.Player+" is Morgana/Merlin")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = "MorganaMerlin"
 					mapp[v.Player] = true
 				}
 			}
 			if k == Merlin {
 				secrets = append(secrets, v.Player+" is Morgana/Merlin")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "MorganaMerlin"
 				mapp[v.Player] = true
 			}
 			if k == Viviana {
 				if _, ok := globalBoard.CharacterToPlayer[Merlin]; !ok {
 					secrets = append(secrets, v.Player+" is Morgana/Viviana")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = "MorganaViviana"
 					mapp[v.Player] = true
 				}
 			}
@@ -663,27 +699,31 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if _, ok := badCharacters[character]; ok && character != Oberon && character != Accolon && character != LancelotBad && character != Balin && character != Agravain {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
-			if _, ok := badCharacters[k]; (ok && k != character && k != Oberon && k != Accolon && k != Agravain) || k == Meliagant  {
+			if _, ok := badCharacters[k]; (ok && k != character && k != Oberon && k != Accolon && k != Agravain) || k == Meliagant {
 				if k == "Polygraph" {
 					secrets = append(secrets, v.Player+" is polygraph")
+					playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Polygraph"
 					mapp[v.Player] = true
 				} else {
 
-					if v.Player == strayPlayer.Player  {
+					if v.Player == strayPlayer.Player {
 						secrets = append(secrets, v.Player+" is Stray")
+						playerSecret.PlayersWithUncoveredCharacters[v.Player] = Stray
 					} else {
 						secrets = append(secrets, v.Player+" is bad")
+						playerSecret.PlayersWithBadCharacter = append(playerSecret.PlayersWithBadCharacter, v.Player)
 					}
 					mapp[v.Player] = true
 				}
 			}
 		}
-		if  _, ok := globalBoard.CharacterToPlayer[Stray]; ok {
+		if _, ok := isCharacterExists(true, Stray); ok && strayPlayer != player {
 			if !mapp[strayPlayer.Player] {
 				secrets = append(secrets, strayPlayer.Player+" is Stray")
+				playerSecret.PlayersWithUncoveredCharacters[strayPlayer.Player] = Stray
 				mapp[strayPlayer.Player] = true
 			}
 		}
@@ -693,11 +733,12 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == TheQuestingBeast {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if k == Pellinore {
 				secrets = append(secrets, v.Player+" is Pellinore")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Pellinore
 				mapp[v.Player] = true
 			}
 		}
@@ -707,15 +748,17 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	if character == "Gawain" {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
-			mapp= make (map[string]bool)
+			mapp = make(map[string]bool)
 		}
 		for k, v := range globalBoard.CharacterToPlayer {
 			if _, ok := badCharacters[k]; (ok && k != character && k != Oberon && k != Accolon) || k == Meliagant {
 				secrets = append(secrets, v.Player+" ")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Unknown"
 				mapp[v.Player] = true
 			}
 			if k == Percival || k == Merlin || k == Nirlem || k == Viviana {
 				secrets = append(secrets, v.Player+" ")
+				playerSecret.PlayersWithUncoveredCharacters[v.Player] = "Unknown"
 				mapp[v.Player] = true
 			}
 		}
@@ -726,7 +769,39 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 	rand.Shuffle(len(secrets), func(i, j int) {
 		secrets[i], secrets[j] = secrets[j], secrets[i]
 	})
-	return secrets, whoSeeWho
+
+	rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Shuffle(len(playerSecret.PlayersWithBadCharacter), func(i, j int) {
+		playerSecret.PlayersWithBadCharacter[i], playerSecret.PlayersWithBadCharacter[j] = playerSecret.PlayersWithBadCharacter[j], playerSecret.PlayersWithBadCharacter[i]
+	})
+
+	rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Shuffle(len(playerSecret.PlayersWithGoodCharacter), func(i, j int) {
+		playerSecret.PlayersWithGoodCharacter[i], playerSecret.PlayersWithGoodCharacter[j] = playerSecret.PlayersWithGoodCharacter[j], playerSecret.PlayersWithBadCharacter[i]
+	})
+
+	log.Println("character:", character)
+	log.Println("secrets:", secrets)
+	log.Println("new secrets:", playerSecret)
+	return &playerSecret, secrets, whoSeeWho
+}
+
+func removeElementFromSlice(player PlayerName, sameTeam []string) []string {
+	//remove this player from both arrays!!!!
+	idx := 0
+	isFound := false
+	for _, s := range sameTeam {
+		if s != player.Player {
+			idx++
+		} else {
+			isFound = true
+			break
+		}
+	}
+	if isFound {
+		sameTeam = removeElementFromStringSlice(sameTeam, idx)
+	}
+	return sameTeam
 }
 
 
@@ -777,6 +852,9 @@ func assignCharactersToRegisteredPlayers(newGameConfig []Ch, chosenCharacters []
 
 		newCharactersForStray := []string{Mordred, goodChars[random1]}
 		random2 := rand.Intn(len(newCharactersForStray))
+		if _, ok := isCharacterExists(true, Mordred); ok {
+			random2 = 1
+		}
 		globalBoard.PlayerToCharacter[strayPlayer] = newCharactersForStray[random2]
 		globalBoard.CharacterToPlayer[newCharactersForStray[random2]] = strayPlayer
 		//globalBoard.Characters = append(globalBoard.Characters, newCharactersForStray[random2])

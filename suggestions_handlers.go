@@ -86,7 +86,7 @@ func HandleNewSuggest(pl Suggestion) {
 	if globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].RetriesPerLevel[globalBoard.quests.current]-1 ==
 		globalBoard.suggestions.unsuccessfulRetries {
 
-		if HandleAcceptedSuggestion(globalBoard.numOfPlayers, newEntry) {
+		if HandleAcceptedSuggestion(globalBoard.numOfPlayers, &newEntry) {
 			return
 		}
 
@@ -166,8 +166,8 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 		globalBoard.isSuggestionBad++ //inc bad counter
 	}
 
-	if len(globalBoard.votesForNextMission) == globalBoard.numOfPlayers { //last vote
-		log.Println("vote is over. num of players =", len(globalBoard.PlayerNames))
+	if len(globalBoard.votesForNextMission) == globalBoard.numOfConnectedPlayers { //last vote
+		log.Println("vote is over. num of players =", globalBoard.numOfConnectedPlayers)
 
 		numOfQuests := globalConfigPerNumOfPlayers[globalBoard.numOfPlayers].NumOfQuests
 		if globalBoard.quests.current+1 == numOfQuests { //last quest in game
@@ -189,7 +189,7 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 
 		if globalBoard.isSuggestionGood > globalBoard.isSuggestionBad {
 
-			if HandleAcceptedSuggestion(numOfQuests, curEntry) {
+			if HandleAcceptedSuggestion(numOfQuests, &curEntry) {
 				return
 			}
 		} else {
@@ -213,7 +213,7 @@ func HandleSuggestionVote(vote VoteForSuggestion) {
 	globalMutex.Unlock()
 }
 
-func HandleAcceptedSuggestion(numOfQuests int, curEntry QuestArchiveItem) bool {
+func HandleAcceptedSuggestion(numOfQuests int, curEntry* QuestArchiveItem) bool {
 	/*
 		Gawain's logic: If it's the last quest, the suggestion was accepted
 		and Gawain is included - he WINS the game!
@@ -322,14 +322,24 @@ func UncoverCharacter(suggesterPlayerName PlayerName, character string) {
 		globalBoard.playersWithCharacters = make(map[string]string)
 	}
 	globalBoard.playersWithCharacters[suggesterPlayerName.Player] = character
+	vivianaPlayer, _ := globalBoard.CharacterToPlayer[Viviana]
+	globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithUncoveredCharacters[suggesterPlayerName.Player] = character
 }
 
 func UncoverAsBadCharacter(suggesterPlayerName PlayerName) {
-	globalBoard.playersWithBadCharacter = append(globalBoard.playersWithBadCharacter,
+	vivianaPlayer, _ := globalBoard.CharacterToPlayer[Viviana]
+
+	globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithBadCharacter = append(globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithBadCharacter, suggesterPlayerName.Player)
+
+	globalBoard.PlayersWithBadCharacter = append(globalBoard.PlayersWithBadCharacter,
 		suggesterPlayerName.Player)
 }
 
 func UncoverAsGoodCharacter(suggesterPlayerName PlayerName) {
+	vivianaPlayer, _ := globalBoard.CharacterToPlayer[Viviana]
+
+	globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithGoodCharacter = append(globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithGoodCharacter, suggesterPlayerName.Player)
+
 	globalBoard.playersWithGoodCharacter = append(globalBoard.playersWithGoodCharacter,
 		suggesterPlayerName.Player)
 }
