@@ -25,6 +25,94 @@ type GameConfiguration struct {
 	Lady       bool `json:"lady"`
 }
 
+func CreateOtherRolesDescriptions(character string) CharacterDescription {
+	assasinPlayer, _ := globalBoard.CharacterToPlayer[Assassin]
+	assassinCharacter := globalBoard.PlayerToCharacter[assasinPlayer]
+
+	desc := CharactersDescriptionMap[character]
+	newSlice := make([]string, 0)
+	for _, ch := range desc.CanSeeAsColor {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			if ch != Assassin || assassinCharacter != Assassin {
+				newSlice = append(newSlice, ch)
+			}
+		}
+	}
+	desc.CanSeeAsColor = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.CanSeeSpecifically {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			if ch != Assassin || assassinCharacter != Assassin {
+				newSlice = append(newSlice, ch)
+			}
+		}
+	}
+	desc.CanSeeSpecifically = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.SeenAsColorBy {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			if ch != Assassin || assassinCharacter != Assassin {
+				newSlice = append(newSlice, ch)
+			}
+
+		}
+	}
+	desc.SeenAsColorBy = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.SeenSpecificallyBy {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			if ch != Assassin || assassinCharacter != Assassin {
+				newSlice = append(newSlice, ch)
+			}
+		}
+	}
+	desc.SeenSpecificallyBy = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.Murder {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			newSlice = append(newSlice, ch)
+		}
+	}
+	desc.Murder = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.Murder {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			newSlice = append(newSlice, ch)
+		}
+	}
+	desc.Murder = newSlice
+
+	newSlice = make([]string, 0)
+	for _, ch := range desc.MurderedBy {
+		if _, ok := globalBoard.CharacterToPlayer[ch]; ok {
+			_, KingClaudinExists := isCharacterExists(true, KingClaudin)
+			_, PrinceClaudinExists := isCharacterExists(true, PrinceClaudin)
+			if ch == Percival {
+				if KingClaudinExists && PrinceClaudinExists {
+					newSlice = append(newSlice, ch)
+				}
+			} else if ch == KingArthur {
+				if !KingClaudinExists || !PrinceClaudinExists {
+					newSlice = append(newSlice, ch)
+				}
+			} else if ch == Assassin {
+				newSlice = append(newSlice, assassinCharacter)
+			} else {
+				newSlice = append(newSlice, ch)
+			}
+		}
+	}
+	desc.MurderedBy = newSlice
+
+	return desc
+}
+
+
 func StartGameHandler(newGameConfig GameConfiguration) {
 	log.Println("newGameConfig", newGameConfig)
 	globalMutex.Lock()
@@ -69,7 +157,7 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 				numOfGood++
 			} else if v.Name == "Puck" {
 				numOfGood++
-			} else if v.Name == "Ginerva" || v.Name == "Gawain" {
+			} else if v.Name == "Ginerva" || v.Name == "Gawain" || v.Name == TheQuestingBeast {
 				numOfBads++
 			} else {
 				globalMutex.Unlock()
@@ -271,8 +359,19 @@ func StartGameHandler(newGameConfig GameConfiguration) {
 		globalBoard.quests.Flags[HAS_BALAIN_AND_BALIN] = true
 	}
 
-
 	globalBoard.CharacterToPlayer[Assassin] = PlayerName{assassinPlayer}
+
+
+	globalBoard.OtherRolesDescriptions = make(map[string]CharacterDescription)
+	for _, ch := range globalBoard.Characters {
+		globalBoard.OtherRolesDescriptions[ch] = CreateOtherRolesDescriptions(ch)
+	}
+	str, ok := globalBoard.CharacterToPlayer[Stray]
+	if ok {
+		strayNewCharacter := globalBoard.PlayerToCharacter[str]
+		globalBoard.OtherRolesDescriptions[strayNewCharacter] = CreateOtherRolesDescriptions(strayNewCharacter)
+	}
+
 	globalMutex.Unlock()
 }
 
@@ -696,6 +795,25 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		}
 		whoSeeWho[character] = mapp
 	}
+
+	if character == Claudas {
+		mapp := whoSeeWho[character]
+		if mapp == nil {
+			mapp = make(map[string]bool)
+		}
+		if oberonPlayer, exists := isCharacterExists(true, Oberon); exists {
+			playerSecret.PlayersWithUncoveredCharacters[oberonPlayer.Player] = Oberon
+			mapp[oberonPlayer.Player] = true
+		}
+		if sirkayPlayer, exists := isCharacterExists(true, SirKay); exists {
+			playerSecret.PlayersWithUncoveredCharacters[sirkayPlayer.Player] = SirKay
+			mapp[sirkayPlayer.Player] = true
+		}
+		whoSeeWho[character] = mapp
+	}
+
+
+
 	if _, ok := badCharacters[character]; ok && character != Oberon && character != Accolon && character != LancelotBad && character != Balin && character != Agravain {
 		mapp := whoSeeWho[character]
 		if mapp == nil {
@@ -735,13 +853,13 @@ func GetSecretsFromPlayerName(player PlayerName, whoSeeWho map[string]map[string
 		if mapp == nil {
 			mapp = make(map[string]bool)
 		}
-		for k, v := range globalBoard.CharacterToPlayer {
-			if k == Pellinore {
-				secrets = append(secrets, v.Player+" is Pellinore")
-				playerSecret.PlayersWithUncoveredCharacters[v.Player] = Pellinore
-				mapp[v.Player] = true
-			}
+		pellinore, ok := globalBoard.CharacterToPlayer[Pellinore]
+		if ok {
+			secrets = append(secrets, pellinore.Player+" is Pellinore")
+			playerSecret.PlayersWithUncoveredCharacters[pellinore.Player] = Pellinore
+			mapp[pellinore.Player] = true
 		}
+
 		whoSeeWho[character] = mapp
 	}
 

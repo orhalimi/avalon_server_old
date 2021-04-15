@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
-	"runtime"
 )
 
 
@@ -31,9 +30,9 @@ func (manager *ClientManager) start() {
 	defer func() {
 		//debug.PrintStack()
 		log.Println("manager start thread termination. fatal error")
-		buf := make([]byte, 1<<16)
-		runtime.Stack(buf, true)
-		log.Println("%s", buf)
+		//buf := make([]byte, 1<<16)
+	//	runtime.Stack(buf, true)
+		//log.Println("%s", buf)
 	}()
 	for {
 		log.Println("inside MANAGER loop")
@@ -79,11 +78,17 @@ func (manager *ClientManager) start() {
 				ls := ListOfPlayersResponse{Total: len(globalBoard.PlayerNames), Players: globalBoard.PlayerNames}
 				playersMsg, _ := json.Marshal(&PlayerGone{Type: "bla", Players: ls})
 				globalMutex.Unlock()
+
+				log.Println("before 84")
 				manager.send(playersMsg, conn)
 
+				log.Println("before close(conn.send)")
 				close(conn.send)
+				log.Println("before delete(manager.clients, conn)")
 				delete(manager.clients, conn)
+				log.Println("before json.Marshal(&Message{Content")
 				jsonMessage, _ := json.Marshal(&Message{Content: "/A socket has disconnected."})
+				log.Println("before manager.send")
 				manager.send(jsonMessage, conn)
 			}
 		case message := <-manager.broadcast:
@@ -91,6 +96,7 @@ func (manager *ClientManager) start() {
 			var msg Message
 			json.Unmarshal(message, &msg)
 			for conn := range manager.clients {
+				log.Println("conn:" + conn.id)
 				if msg.Content == "board" {
 					if msg.Recipient != "" && msg.Recipient[0] != '^' && msg.Recipient != conn.id {
 						continue
@@ -105,7 +111,7 @@ func (manager *ClientManager) start() {
 					log.Println("Going to send the following state to ", conn.id)
 					var prettyJSON bytes.Buffer
 					json.Indent(&prettyJSON, jsonMessage, "", "\t")
-					log.Println("Game State:", string(prettyJSON.Bytes()))
+					//log.Println("Game State:", string(prettyJSON.Bytes()))
 
 					message, _ = json.Marshal(&Message{Sender: msg.Sender, Content: string(jsonMessage)})
 				}
@@ -117,6 +123,7 @@ func (manager *ClientManager) start() {
 					delete(manager.clients, conn)
 				}
 			}
+			log.Println("after iteration over conns")
 		}
 	}
 }

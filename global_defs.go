@@ -56,10 +56,11 @@ var neutralCharacters = map[string]bool{
 	"Ginerva": true,
 	"Puck":    true,
 	"Gawain":  true,
+	TheQuestingBeast: true,
 }
 
 var optionalGoodsForStray = []string{GoodAngel, Titanya, Nimue, Raven, KingArthur, SirRobin,
-	TheCoward, MerlinApprentice, Guinevere, Gornemant, Blanchefleur, SirGawain, Elaine}
+	TheCoward, MerlinApprentice, Guinevere, Gornemant, Blanchefleur, SirGawain, Elaine, LoyalServentOfArthur, LoyalServentOfArthurA, LoyalServentOfArthurB, LoyalServentOfArthurC, LoyalServentOfArthurD}
 
 var notAllowedGoodsForStrayForLessThan7Players = map[string]bool{
 	Gornemant:           true,
@@ -104,9 +105,19 @@ const ( // Good Characters...
 	Dagonet = "Dagonet"
 	Meliagant = "Meliagant"
 	Bors = "Bors"
+	UtherPendragon = "Uther-Pendragon"
+	LoyalServentOfArthur = "Loyal-Servent-Of-Arthur"
+	LoyalServentOfArthurA = "Loyal-Servent-Of-Arthur1"
+	LoyalServentOfArthurB = "Loyal-Servent-Of-Arthur2"
+	LoyalServentOfArthurC = "Loyal-Servent-Of-Arthur3"
+	LoyalServentOfArthurD = "Loyal-Servent-Of-Arthur4"
 )
 
-
+const (
+	Gawain = "Gawain"
+	Puck = "Puck"
+	Ginerva = "Ginerva"
+)
 const ( // Bad Characters...
 	Morgana = "Morgana"
 	Assassin = "Assassin"
@@ -125,6 +136,10 @@ const ( // Bad Characters...
 	Nerzhul = "Nerzhul"
 	Mora = "Mora"
 	Melwas = "Melwas"
+	Claudas = "Claudas"
+	MinionOfMordred = "Minion-Of-Mordred"
+	MinionOfMordredA = "Minion-Of-Mordred1"
+	MinionOfMordredB = "Minion-Of-Mordred2"
 )
 
 var goodCharacters = map[string]bool{
@@ -164,6 +179,12 @@ var goodCharacters = map[string]bool{
 	Dagonet:           true,
 	Meliagant:         true,
 	Bors:              true,
+	UtherPendragon:		true,
+	LoyalServentOfArthurA: true,
+	LoyalServentOfArthurB: true,
+	LoyalServentOfArthurC: true,
+	LoyalServentOfArthurD: true,
+	LoyalServentOfArthur: true,
 }
 var badCharacters = map[string]bool{
 	Morgana:            true,
@@ -173,7 +194,6 @@ var badCharacters = map[string]bool{
 	BadAngel:          true,
 	KingClaudin:       true,
 	Polygraph:          true,
-	TheQuestingBeast: true,
 	Accolon:            true,
 	LancelotBad:       true,
 	QueenMab:          true,
@@ -183,6 +203,10 @@ var badCharacters = map[string]bool{
 	Nerzhul:            true,
 	Mora:               true,
 	Melwas:             true,
+	Claudas:			true,
+	MinionOfMordred: 	true,
+	MinionOfMordredA:	true,
+	MinionOfMordredB:	true,
 }
 
 type PlayerName struct {
@@ -199,6 +223,7 @@ type QuestStats struct {
 	NumOfFailures int `json:"failures,omitempty"`
 	NumOfBeasts   int `json:"beasts,omitempty"`
 	AvalonPower   bool `json:"avalon_power,omitempty"`
+	NumOfEmpty int	`json:"empty,omitempty"`
 }
 
 const ( //Flags
@@ -239,6 +264,7 @@ type QuestArchiveItem struct {
 	NumberOfSuccesses              int        `json:"numberOfSuccesses"`
 	NumberOfFailures               int        `json:"numberOfFailures"`
 	NumberOfBeasts                 int        `json:"numberOfBeasts"`
+	NumberOfEmpty              int        `json:"numberOfEmpty"`
 	AvalonPower   					bool `json:"avalon_power,omitempty"`
 	FinalResult                    int        `json:"finalResult"`
 	Id                             float32    `json:"questId"` //e.g. 1.1 , 2 ..
@@ -296,6 +322,8 @@ type BoardGame struct {
 	PlayerToCharacter        map[PlayerName]string
 	CharacterToPlayer        map[string]PlayerName
 	Characters               []string
+	OtherRolesDescriptions    map[string]CharacterDescription
+
 	PendingMurders           []Murder
 	PlayerToMurderInfo       map[string]MurderInfo
 	quests                   QuestManager

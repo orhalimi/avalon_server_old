@@ -103,7 +103,10 @@ func GetGameState(clientId string) GameState {
 		return board
 	}
 
+	log.Println("GetGameState:", clientId)
+
 	if globalBoard.State > NotStarted && globalBoard.SecretsMap[clientId] != nil {
+		log.Println(*globalBoard.SecretsMap[clientId])
 		board.PlayerSecrets = *globalBoard.SecretsMap[clientId]
 	}
 	// Seer's two options to see: the player before or after.
@@ -154,9 +157,9 @@ func GetGameState(clientId string) GameState {
 	strayNewCharacter := globalBoard.PlayerToCharacter[str]
 	for _, ch := range globalBoard.Characters {
 		if ok && Stray == ch && str.Player == clientId {
-			board.Characters[ch] = CharactersDescriptionMap[strayNewCharacter]
+			board.Characters[ch] = globalBoard.OtherRolesDescriptions[strayNewCharacter]
 		} else {
-			board.Characters[ch] = CharactersDescriptionMap[ch]
+			board.Characters[ch] = globalBoard.OtherRolesDescriptions[ch]
 		}
 	}
 	board.PlayersVotedForCurrQuest = globalBoard.quests.playerVotedForCurrentQuest
@@ -171,6 +174,8 @@ func GetGameState(clientId string) GameState {
 		cpy[len(cpy)-1].NumberOfReversal = 0
 		cpy[len(cpy)-1].NumberOfSuccesses = 0
 		cpy[len(cpy)-1].NumberOfFailures = 0
+		cpy[len(cpy)-1].NumberOfBeasts = 0
+		cpy[len(cpy)-1].NumberOfEmpty = 0
 	}
 	board.Archive = cpy
 
@@ -204,10 +209,9 @@ func GetGameState(clientId string) GameState {
 	}
 
 	ectorName, hasEctor := globalBoard.CharacterToPlayer[Ector]
-	if hasEctor || globalBoard.State == VictoryForGood || globalBoard.State == VictoryForBad ||
-		globalBoard.State == VictoryForSirGawain {
+	if hasEctor || isGameOver() {
 		board.PlayerInfo = make(map[string]PlayerInfo)
-		if globalBoard.State == VictoryForSirGawain || globalBoard.State == VictoryForGood || globalBoard.State == VictoryForBad {
+		if isGameOver() {
 			for _, pl := range board.Players.Players {
 				playerInfo := PlayerInfo{}
 				playerInfo.Character = globalBoard.PlayerToCharacter[pl]
@@ -233,6 +237,10 @@ func GetGameState(clientId string) GameState {
 	}
 	globalMutex.RUnlock()
 	return board
+}
+
+func isGameOver() bool {
+	return globalBoard.State == VictoryForSirGawain || globalBoard.State == VictoryForGawain || globalBoard.State == VictoryForGood || globalBoard.State == VictoryForBad
 }
 
 func getSeerOptions(clientId string) []string {

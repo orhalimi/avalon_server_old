@@ -14,6 +14,7 @@ const (
 	VoteReversal    = 2
 	VoteBeast       = 3
 	VoteAvalonPower = 5
+	VoteEmpty = 6
 )
 
 type VoteForJourney struct {
@@ -28,6 +29,7 @@ type VoteForJourneyMessage struct {
 
 func HandleJourneyVote(vote VoteForJourney) {
 	globalMutex.Lock()
+	defer globalMutex.Unlock()
 	current := globalBoard.quests.current
 
 	if globalBoard.State != JorneyVoting {
@@ -35,7 +37,6 @@ func HandleJourneyVote(vote VoteForJourney) {
 	}
 
 	if _, ok := globalBoard.quests.playerVotedForCurrent[vote.PlayerName]; ok {
-		globalMutex.Unlock()
 		return
 	}
 
@@ -85,6 +86,9 @@ func HandleJourneyVote(vote VoteForJourney) {
 	} else if vote.Vote == VoteReversal {
 		res.NumOfReversal++
 		curEntry.NumberOfReversal++
+	} else if vote.Vote == VoteEmpty {
+		res.NumOfEmpty++
+		curEntry.NumberOfEmpty++
 	}
 
 
@@ -97,7 +101,6 @@ func HandleJourneyVote(vote VoteForJourney) {
 			globalBoard.archive[len(globalBoard.archive)-1] = curEntry
 			globalBoard.quests.results[current+1] = res
 			globalBoard.quests.playersVotes[current] = mp
-			globalMutex.Unlock()
 			return
 		}
 
@@ -115,7 +118,6 @@ func HandleJourneyVote(vote VoteForJourney) {
 	if _, ok := globalBoard.quests.Flags[EXCALIBUR]; !ok && len(mp) == requiredVotes { //last vote
 		globalBoard.quests.current++
 	}
-	globalMutex.Unlock()
 }
 
 func StartNewSuggestion(mp []int, curEntry QuestArchiveItem, current int) bool {
@@ -148,7 +150,6 @@ func StartNewSuggestion(mp []int, curEntry QuestArchiveItem, current int) bool {
 
 			globalBoard.QuestStage = globalBoard.LastQuestStage
 
-			globalMutex.Unlock()
 			return true
 		}
 	}
@@ -237,11 +238,19 @@ func EndJourney(res *QuestStats, mp []int, curEntry *QuestArchiveItem, current i
 				if globalBoard.quests.Flags[HAS_TWO_LANCELOT] {
 					lanBad := globalBoard.CharacterToPlayer[LancelotBad]
 					lanGood := globalBoard.CharacterToPlayer[LancelotGood]
+
+
 					globalBoard.CharacterToPlayer[LancelotBad] = lanGood
 					globalBoard.CharacterToPlayer[LancelotGood] = lanBad
 					globalBoard.PlayerToCharacter[lanBad] = LancelotGood
 					globalBoard.PlayerToCharacter[lanGood] = LancelotBad
 					curEntry.IsSwitchLancelot = true
+
+					// If Lancelot-Bad was chosen to be the assassin, we need to update that.
+					assasinPlayer, _ := globalBoard.CharacterToPlayer[Assassin]
+					if assasinPlayer == lanBad {
+						globalBoard.CharacterToPlayer[Assassin] = lanGood
+					}
 					//fix bug of viviana that seeother lanselot
 					/*for i, pl := range globalBoard.PlayersWithBadCharacter {
 						if pl == lanBad.Player {
@@ -372,6 +381,10 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 		return []string{"Fail", "Success"}
 	}
 
+	if character == UtherPendragon {
+		return []string{"Empty"}
+	}
+
 	if character == KingArthur {
 		return []string{"Fail"}
 	}
@@ -426,6 +439,9 @@ func getOptionalVotesAccordingToQuestMembers(character string, questMembers map[
 
 	if FlushQuest == getTypeOfLevel(current+1, numOfPlayers) {
 		if _, ok := badCharacters[character]; ok || character == "Ginerva" || character == Meliagant {
+			if character == Mora {
+				return []string{"Fail", "Success"}
+			}
 			return []string{"Fail"}
 		} else {
 			return []string{"Success"}
@@ -481,6 +497,9 @@ func getVoteStr(vote int) string {
 	}
 	if VoteAvalonPower == vote {
 		return "Avalon Power"
+	}
+	if VoteEmpty == vote {
+		return "Empty"
 	}
 	return "N/A"
 }

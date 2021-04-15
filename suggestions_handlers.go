@@ -77,7 +77,10 @@ func HandleNewSuggest(pl Suggestion) {
 
 	globalBoard.State = SuggestionVoting
 	suggestedPlayersString := strings.Join(suggestedPlayers[:], ",")
-	globalBoard.StateDescription = "Vote For New Suggestion: by: " + globalBoard.PlayerNames[suggesterIn].Player + "; Suggested Players: " + suggestedPlayersString + "; Excalibur: " + pl.ExcaliburPlayer
+	globalBoard.StateDescription = "Vote For New Suggestion: by: " + globalBoard.PlayerNames[suggesterIn].Player + "; Suggested Players: " + suggestedPlayersString
+	if pl.ExcaliburPlayer != "" {
+		globalBoard.StateDescription += "; Excalibur: " + pl.ExcaliburPlayer
+	}
 	globalBoard.votesForNextMission = make(map[string]bool)
 	globalBoard.suggestions.playersVotedYes = make([]string, 0)
 	globalBoard.suggestions.playersVotedNo = make([]string, 0)
@@ -233,12 +236,19 @@ func HandleAcceptedSuggestion(numOfQuests int, curEntry* QuestArchiveItem) bool 
 
 	isPellinoreInQuest := false
 	isBeastInQuest := false
+	log.Println("accepted quest")
 	for _, c := range globalBoard.suggestions.SuggestedPlayers {
-		if c == Pellinore {
-			isPellinoreInQuest = true
+		if char, ok := globalBoard.PlayerToCharacter[PlayerName{c}]; ok {
+			if char == Pellinore {
+				log.Println("found Pellinore")
+				isPellinoreInQuest = true
+			}
 		}
-		if c == TheQuestingBeast {
-			isBeastInQuest = true
+		if char, ok := globalBoard.PlayerToCharacter[PlayerName{c}]; ok {
+			if char == TheQuestingBeast {
+				log.Println("found TheQuestingBeast")
+				isBeastInQuest = true
+			}
 		}
 	}
 	if isPellinoreInQuest && isBeastInQuest {
@@ -275,6 +285,11 @@ func HandleAcceptedSuggestion(numOfQuests int, curEntry* QuestArchiveItem) bool 
 			globalBoard.CharacterToPlayer[Balin] = balainPlayer
 			globalBoard.PlayerToCharacter[balinPlayer] = Balain
 			globalBoard.PlayerToCharacter[balainPlayer] = Balin
+			// If Lancelot-Bad was chosen to be the assassin, we need to update that.
+			assasinPlayer, _ := globalBoard.CharacterToPlayer[Assassin]
+			if assasinPlayer == balinPlayer {
+				globalBoard.CharacterToPlayer[Assassin] = balinPlayer
+			}
 		}
 	}
 
@@ -329,8 +344,9 @@ func UncoverCharacter(suggesterPlayerName PlayerName, character string) {
 func UncoverAsBadCharacter(suggesterPlayerName PlayerName) {
 	vivianaPlayer, _ := globalBoard.CharacterToPlayer[Viviana]
 
+	log.Println("before:", globalBoard.SecretsMap[vivianaPlayer.Player])
 	globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithBadCharacter = append(globalBoard.SecretsMap[vivianaPlayer.Player].PlayersWithBadCharacter, suggesterPlayerName.Player)
-
+	log.Println("after:", globalBoard.SecretsMap[vivianaPlayer.Player])
 	globalBoard.PlayersWithBadCharacter = append(globalBoard.PlayersWithBadCharacter,
 		suggesterPlayerName.Player)
 }

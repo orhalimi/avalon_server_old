@@ -149,7 +149,7 @@ func GetMurdersAfterGoodsWins() ([]Murder, bool) {
 	if beast, isTheQuestingBeastExists := isCharacterExists(true, TheQuestingBeast); isTheQuestingBeastExists {
 		if pellinore, isPellinoreExists := isCharacterExists(true, Pellinore); isPellinoreExists {
 
-			if globalBoard.quests.Flags[BEAST_VOTE_SEEN] &&
+			if globalBoard.quests.Flags[BEAST_VOTE_SEEN] ||
 				globalBoard.quests.Flags[BEAST_AND_PELLINORE_AT_SAME_QUEST] {
 				log.Println("not adding beast murder.")
 			} else {
@@ -211,10 +211,16 @@ func GetMurdersAfterBadsWins() ([]Murder, bool) {
 
 	murders := make([]Murder, 0)
 
-	if beast, isKingClaudinExists := globalBoard.CharacterToPlayer[TheQuestingBeast]; isKingClaudinExists {
-		if pellinore, isPrinceClaudinExists := globalBoard.CharacterToPlayer[Pellinore]; isPrinceClaudinExists {
-			m := Murder{target: []string{beast.Player}, TargetCharacters: []string{TheQuestingBeast}, By: pellinore.Player}
-			murders = append(murders, m)
+	if beast, isTheQuestingBeastExists := isCharacterExists(true, TheQuestingBeast); isTheQuestingBeastExists {
+		if pellinore, isPellinoreExists := isCharacterExists(true, Pellinore); isPellinoreExists {
+
+			if globalBoard.quests.Flags[BEAST_VOTE_SEEN] ||
+				globalBoard.quests.Flags[BEAST_AND_PELLINORE_AT_SAME_QUEST] {
+				log.Println("not adding beast murder.")
+			} else {
+				m := Murder{target: []string{beast.Player}, TargetCharacters: []string{TheQuestingBeast}, By: pellinore.Player}
+				murders = append(murders, m)
+			}
 		}
 	}
 
