@@ -11,14 +11,17 @@ services:
       - '27017-27019:27017-27019'
 
 
-  # avalon-server:
-  #   image: avalon-server
-  #   tty: true
-  #   stdin_open: true 
-  #   build:
-  #     context: .
-  #     dockerfile: server.Dockerfile
-  #   ports:
-  #     - '12345:12345'
-  #   depends_on:
-  #     - 'mongo'
+  server:
+    image: avalon:tiny
+    tty: true
+    stdin_open: true 
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '12345:12345'
+    depends_on:
+      - 'mongo'
+    environment:
+      - MONGO_ADDRESS=mongo
+

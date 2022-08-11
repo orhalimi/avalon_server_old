@@ -1,0 +1,10 @@
+FROM golang:1.18.5-alpine3.16 as BUILD
+COPY . .
+
+RUN unset GOPATH && go build -o avalon  ./src/
+
+FROM alpine:latest
+
+COPY --from=BUILD /go/avalon /bin/
+
+ENTRYPOINT [ "/bin/avalon" ]
