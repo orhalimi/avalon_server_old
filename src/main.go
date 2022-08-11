@@ -29,6 +29,7 @@ var (
 	mongoPort          = getEnv("MONGO_PORT", "27017")
 	dbName             = getEnv("MONGO_DB_NAME", "test_db")
 	userCollectionName = getEnv("MONGO_USER_NAME", "user")
+
 )
 
 var globalMutex sync.RWMutex
