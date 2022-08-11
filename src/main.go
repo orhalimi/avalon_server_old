@@ -15,17 +15,23 @@ import (
 	"time"
 )
 
-const (
-	mongoUrl           = "localhost:27017"
-	dbName             = "test_db"
-	userCollectionName = "user"
+// getEnv get key environment variable if exist otherwise return defalutValue
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return defaultValue
+	}
+	return value
+}
+
+var (
+	mongoUrl           = getEnv("MONGO_ADDRESS", "127.0.0.1")
+	mongoPort          = getEnv("MONGO_PORT", "27017")
+	dbName             = getEnv("MONGO_DB_NAME", "test_db")
+	userCollectionName = getEnv("MONGO_USER_NAME", "user")
 )
 
 var globalMutex sync.RWMutex
-
-
-
-
 
 func wsPage(res http.ResponseWriter, req *http.Request) {
 	jwtToken := req.URL.Query().Get("token")
@@ -70,12 +76,12 @@ type userRouter struct {
 }
 
 func main() {
-	fmt.Println("Starting server at http://localhost:12345...")
+	fmt.Printf("Starting server at http://%s:%s...\n", mongoUrl, mongoPort)
 	f, _ := os.OpenFile("testlogfile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	defer f.Close()
 	log.SetOutput(f)
 
-	session, _ := NewSession(mongoUrl)
+	session, _ := NewSession(fmt.Sprintf("%s:%s", mongoUrl, mongoPort))
 	defer func() {
 		session.Close()
 	}()
