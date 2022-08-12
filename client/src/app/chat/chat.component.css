@@ -1,0 +1,50 @@
+:host {
+  min-width: 450px;
+}
+
+.xxss {
+  border: none;
+  height: 250px;
+width: 100%;
+  opacity: 1;
+  background-color: transparent;
+  color: #f0f0f0;
+  overflow: auto;
+  padding-bottom: 5px;
+  font-size: 20px;
+}
+
+
+
+.chat-messages {
+  background: transparent;
+  padding: 5px 10px;
+  height: 160px;
+  overflow: auto;
+  color: white;
+  width: 100%;
+}
+
+
+.inpclass {
+  border: none;
+  height: 40px;
+  width: 100%;
+  opacity: 1;
+  color: #f0f0f0;
+
+}
+
+.chat-input {
+  background: slategrey;
+  padding: 0 10px;
+  width: 100%;
+  opacity: 0.6;
+  color: white;
+  border-top: 1px solid grey;
+}
+
+.chat-message-sender {
+  font-weight: bold;
+  margin-right: 5px;
+}

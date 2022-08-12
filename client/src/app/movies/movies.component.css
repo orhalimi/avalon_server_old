@@ -1,0 +1,775 @@
+
+.signin-content {
+  padding: 60px 1rem;
+  background-color:transparent;
+}
+.full-width-input {
+  width: 100%;
+  opacity: 0.5;
+  align-content:center;
+  align:"center";
+  background-color:transparent;
+}
+.app-toolbar-filler {
+    flex: 1 1 auto;
+}
+
+th {
+    padding: 10px 0px;
+}
+
+td {
+    padding: 10px 0px;
+}
+.card-container {
+
+  width: 300px;
+
+  height: 270px;
+
+  position: relative;
+
+  -webkit-perspective: 500px;
+
+  perspective: 500px;
+
+}
+
+
+
+.flippable-card {
+
+  width: 100%;
+
+  height: 100%;
+
+  position: absolute;
+
+  transform-style: preserve-3d;
+
+  transition: transform 1s;
+
+}
+
+
+
+.flippable-card mat-card {
+
+  margin: 0;
+
+  display: block;
+
+  position: absolute;
+
+  width: 252px;
+
+  height: 222px;
+
+  backface-visibility: hidden;
+
+}
+
+
+
+.flippable-card.back {
+
+  background: #f0f0f0;
+
+  transform: rotateY( 180deg );
+
+}
+
+
+
+.flippable-card.flipped {
+
+  transform: rotateY( 180deg );
+
+}
+
+
+#serviceBox
+{
+  width:100%;
+  margin: 0 auto;
+  margin-top:55px;
+  height:250px;
+  border:0px solid black;
+}
+.serviceBox1, .serviceBox3 {
+  float:left;
+  width:25%;
+}
+
+.tab {
+  height: 100px;
+  align-content: center;
+  margin: 0 auto;
+  margin-top:0px;
+  border:0px solid black;
+}
+#serviceAvatar
+{
+  width:100%;
+  margin: 0 auto;
+  margin-top:0px;
+  height:120px;
+  border:0px solid black;
+}
+
+.avatar {
+  float:left;
+  width:25%;
+}
+
+.area{
+  height:100%;
+  margin:10px;
+  text-align: center;
+  vertical-align:middle;
+  align-content: center;
+}​
+
+.mat-card-content {
+  background-color: black;
+ }
+.avatardesc {
+  float:left;
+  width:75%;
+}
+.serviceBox4 {
+  float:right;
+  width:25%;
+}
+
+.serviceBox2 {
+  float:left;
+  width:75%;
+  height:100px;
+}
+
+/* Styles for tab labels */
+.mat-tab-label {
+  min-width: 25px;
+  padding: 5px;
+  background-color: black;
+  color: red;
+  font-weight: 700;
+}
+
+/* Styles for the active tab label */
+.mat-tab-label.mat-tab-label-active {
+  min-width: 25px;
+  padding: 5px;
+  background-color: gold;
+  color: red;
+  font-weight: 700;
+}
+
+/* Styles for the ink bar */
+.mat-ink-bar {
+  background-color: green;
+}
+
+.mat-tab-label {
+  color: #000000;
+}
+
+.right-side {
+  padding-left: 70px;
+  align-content: start;
+  vertical-align: text-top;
+}
+
+.bla {
+  opacity: 0.5;
+  align-content:center;
+  width:75%;
+}
+
+
+
+.wrap-collabsible {
+  margin-bottom: 1.2rem 0;
+}
+
+
+.lbl-toggle {
+  display: block;
+
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  text-align: center;
+
+  padding: 1rem;
+
+  color: #A77B0E;
+  background: #FAE042;
+
+  cursor: pointer;
+
+  border-radius: 7px;
+  transition: all 0.25s ease-out;
+}
+
+.lbl-toggle:hover {
+  color: #7C5A0B;
+}
+
+.lbl-toggle::before {
+  content: ' ';
+  display: inline-block;
+
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid currentColor;
+  vertical-align: middle;
+  margin-right: .7rem;
+  transform: translateY(-2px);
+
+  transition: transform .2s ease-out;
+}
+
+.toggle:checked + .lbl-toggle::before {
+  transform: rotate(90deg) translateX(-3px);
+}
+
+.collapsible-content {
+  max-height: 0px;
+  overflow: hidden;
+  transition: max-height .25s ease-in-out;
+}
+
+.toggle:checked + .lbl-toggle + .collapsible-content {
+  max-height: 100vh;
+}
+
+.toggle:checked + .lbl-toggle {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.collapsible-content .content-inner {
+  background: rgba(250, 224, 66, .2);
+  border-bottom: 1px solid rgba(250, 224, 66, .45);
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+  padding: .5rem 1rem;
+}
+
+/* The sidebar menu */
+.sidebar {
+  height: 100%; /* 100% Full-height */
+  width: 0; /* 0 width - change this with JavaScript */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Stay on top */
+  top: 0;
+  left: 0;
+  background-color: #111; /* Black*/
+  overflow-x: hidden; /* Disable horizontal scroll */
+  padding-top: 60px; /* Place content 60px from the top */
+  transition: 0.5s; /* 0.5 second transition effect to slide in the sidebar */
+}
+
+/* The sidebar links */
+.sidebar a {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #818181;
+  display: block;
+  transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidebar a:hover {
+  color: #f1f1f1;
+}
+
+/* Position and style the close button (top right corner) */
+.sidebar .closebtn {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+
+/* Style page content - use this if you want to push the page content to the right when you open the side navigation */
+#main {
+  transition: margin-left .5s; /* If you want a transition effect */
+  padding: 20px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+  .sidebar {padding-top: 15px;}
+  .sidebar a {font-size: 18px;}
+}
+
+.mat-list .mat-list-item .mat-list-avatar.img-preview { height: 50px; width: 50px;  }
+
+.mat-card-title {
+  font-size: 17px;
+
+}
+mat-expansion-panel-header {
+  height: auto!important;
+  vertical-align: center;
+}
+.right-aligned-header > .mat-content {
+  justify-content: space-between;
+}
+
+.mat-content > mat-panel-title, .mat-content > mat-panel-description {
+  flex: 0 0 auto;
+}
+mat-panel-title {
+  height: auto!important;
+
+}
+.mat-content {
+  align-items: center;
+}
+mat-form-field {
+  margin-right: 12px;
+}
+.bla2 {
+  opacity: 0.5;
+  align-content:center;
+  width:100%;
+}
+
+.jjyy {
+  background-color: black;
+  width:300px;
+  color: #f0f0f0;
+}
+
+.jj {
+  border-radius: 50%;
+  background-color: black;
+  width:10px;
+}
+
+.ddd {
+  opacity: 0.5;
+  align-content:center;
+  width:90%;
+  height:100%;
+  align:"center";
+  color: #f0f0f0;
+}
+
+.dddw {
+  opacity: 1;
+  align-content:center;
+  align:"center";
+  width: 100%;
+  color: #f0f0f0;
+  background-color: black;
+  font-size: 10px;
+}
+
+mat-expansion-panel-header {
+  height: auto!important;
+}
+.mat-expansion-panel-header.mat-expanded {
+  height: 4rem
+}
+.avatar3 {
+  vertical-align: middle;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+.dfre {
+  display: flex;
+  align-items:center;
+}
+.dddww2 {
+  opacity: 1;
+  align-content:center;
+  align:"center";
+  width: 100%;
+  color: #f0f0f0;
+  background-color: black;
+  font-size:12px;
+  font-color: white;
+}
+
+a.button1{
+   display:inline-block;
+   padding:0.35em 1.2em;
+   border:0.1em solid #FFFFFF;
+   margin:0 0.3em 0.3em 0;
+   border-radius:0.12em;
+   box-sizing: border-box;
+   text-decoration:none;
+   font-family:'Roboto',sans-serif;
+   font-weight:300;
+   color:#FFFFFF;
+   text-align:center;
+   transition: all 0.2s;
+}
+a.button1:hover{
+   color:#000000;
+   background-color:#FFFFFF;
+}
+@media all and (max-width:30em) {
+   a.button1 {
+      display: block;
+      margin: 0.4em auto;
+  }
+}
+.dddww {
+  opacity: 1;
+  align-content:center;
+  align:"center";
+  width: 100%;
+  color: #f0f0f0;
+  background-color: black;
+  font-color: white;
+}
+
+.box{
+  height: 250px;
+  border:0px solid #bdbdbd;
+  -webkit-border-radius: 0px;
+  border-radius: 0px;
+  -moz-box-shadow: 0 0 0px #bdbdbd;
+  -webkit-box-shadow: 0 0 0px #bdbdbd;
+  box-shadow: 0 0 0px #bdbdbd;
+}
+
+.g1{
+  width: 40% !important ;
+}
+
+.kk{
+  text-align: center ;
+  width:100%;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* resize images */
+.dddw img {
+  width: 80%;
+  height: auto;
+  alignment: center;
+}
+
+
+.image{
+  height: 150px; /* adjust as needed */
+  object-fit: contain;
+}
+
+
+.div-or {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  vertical-align:middle;
+  align-content: center;
+}
+
+.div-orwgood {
+  opacity: 1;
+  background-color: blue;
+  align-content: center;
+}
+
+.div-orwbad {
+  opacity: 1;
+  background-color: red;
+  align-content: center;
+}
+
+.div-orwga {
+  opacity: 1;
+  background-color: lightgrey;
+  align-content: center;
+}
+
+.div-orw {
+  opacity: 1;
+  background-color: yellowgreen;
+  align-content: center;
+}
+
+.div-orw4 {
+  opacity: 0.6;
+  background-color: greenyellow;
+  width:auto;
+  alignment: center;
+  font-color: white;
+}
+
+.div-error {
+  opacity: 1;
+  background-color: forestgreen;
+  font-color: #ff3a29;
+}
+
+.loyalty-good {
+  opacity: 1;
+  background-color: dodgerblue;
+}
+
+.loyalty-bad {
+  opacity: 1;
+  background-color: orangered;
+}
+
+.div-yes {
+  opacity: 1;
+  background-color: green;
+}
+
+.div-no {
+  opacity: 1;
+  background-color: red;
+}
+
+.ggg {
+  float: right;
+}
+
+
+.mat-card-avatar {
+  alignment: center;
+  height: 100px;
+  width: 100px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mat-panel-title {
+  flex-basis: 0;
+  height: 100px;
+}
+.mat-panel-description {
+  flex-basis: 100%;
+}
+
+.mat-expansion-panel-header {
+  flex-basis: 0;
+  height: 100px;
+}
+
+
+
+
+
+
+
+
+
+.Ginerva {
+  background-image: url('/assets/Ginerva.png');
+  background-size: cover;
+}
+
+.Merlin {
+  background-image: url('/assets/Merlin.png');
+  background-size: cover;
+}
+
+.Percival {
+  background-image: url('/assets/Percival.png');
+  background-size: cover;
+}
+
+.Good-Angel {
+  background-image: url('/assets/Good-Angel.png');
+  background-size: cover;
+}
+
+.avatar-sample {
+  display: flex;
+  flex: 1 0 30%;
+  width: 88px;
+  height: 88px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 72px;
+}
+
+
+.red {
+  background-color: red;
+}
+
+.green {
+  background-color: green;
+}
+.archive {
+  width:100%;
+  height:200px;
+  opacity: 0.7;
+  background-color: gold;
+  alignment: center;
+  align-content: center;
+}
+
+.PurpleSee {
+  background-image: url('/assets/purple_see.jpeg');
+  background-size: cover;
+}
+
+.GreenSee {
+  background-image: url('/assets/green_see.jpeg');
+  background-size: cover;
+}
+
+.GreenSeen {
+  background-image: url('/assets/green_seen.jpeg');
+  background-size: cover;
+}
+
+.PurpleSeen {
+  background-image: url('/assets/purple_seen.jpeg');
+  background-size: cover;
+}
+
+.MorganaMerlin {
+  background-image: url('/assets/MorganaMerlin.png');
+  background-size: cover;
+}
+
+.MorganaViviana {
+  background-image: url('/assets/MorganaViviana.png');
+  background-size: cover;
+}
+
+.GenericBlue {
+  background-image: url('/assets/genericblue.png');
+  background-size: cover;
+}
+
+.GenericRed {
+  background-image: url('/assets/genericred.png');
+  background-size: cover;
+}
+
+.xxss {
+  border: none;
+  opacity: 0.6;
+  background-color: black;
+  alignment: center;
+  align-content: center;
+  margin-left:auto;
+  margin-right:auto;
+  padding-top: 5px;
+  align: center;
+  text-align: center;
+  color: #f0f0f0;
+}
+
+.stats {
+  padding-top: 90px;
+
+}
+
+.stats2 {
+  width: 100%;
+background-color: darkslategray;
+  height: auto;
+}
+
+.stats3 {
+width: 100%;
+  background-color: black;
+opacity: 1;
+}
+
+.xxssor {
+  border: none;
+  height: auto;
+  min-height: 400px;
+  width: 100%;
+  opacity: 1;
+  background-color: black;
+  color: #f0f0f0;
+
+}
+
+.chatdiv {
+  width:40%;
+}
+
+.xxssw {
+  border: 1px solid grey;
+  padding: 5px;
+  text-align: center;
+}
+
+.xxssww {
+  border: 1px solid grey;
+  padding: 5px;
+  text-align: center;
+  opacity: 0.9;
+  background-color: greenyellow;
+}
+
+
+.cc-selector input{
+  margin:0;padding:0;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+}
+.success{background-image:url('/assets/Success_vote.png')}
+.fail{background-image:url('/assets/Fail_vote.png')}
+.reversal{background-image:url('/assets/Reversal_vote.png')}
+
+.Good {
+  color:blue;
+}
+.Bad{
+  color:red;
+}
+.Neutral {
+  color:dimgray;
+}
+
+
+/* Extras */
+a:visited{color:#888}
+a{color:#444;text-decoration:none;}
+p{margin-bottom:.3em;}
+.selected
+{
+  background-color:red!important;
+  color:white;
+}
+.selected:hover
+{
+  background-color:firebrick!important;
+  color:white
+}
+
+
+div.select{
+  opacity:0.8;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  line-height: 2rem;
+  padding: 0 .5rem;
+  text-align: center;
+  text-decoration: none;
+  max-width: 100%;
+  position: relative;
+  width:5rem
+}
+div.select:hover{
+  opacity:1;
+  background: rgba(0,0,0,.04);
+}

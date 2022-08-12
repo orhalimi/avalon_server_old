@@ -1,0 +1,20 @@
+
+<div class="xxss" #scrollMe>
+  <div>Welcome to the chat!</div>
+  <div *ngFor="let message of messages" fxLayout="row">
+    <div class="chat-message-sender">{{message.sender}}:</div>
+    <div>{{message.message}}</div>
+  </div>
+</div>
+
+<div>
+<form #form="ngForm" class="chat-input" fxLayout="row" fxLayoutAlign="center center" (ngSubmit)="go(form)">
+  <mat-form-field fxFlex="" class="fg-white-input">
+    <input matInput name="pending" ngModel="">
+  </mat-form-field>
+  <button type="submit" mat-icon-button>
+    <mat-icon class="fg-white">send</mat-icon>
+  </button>
+</form>
+</div>
+

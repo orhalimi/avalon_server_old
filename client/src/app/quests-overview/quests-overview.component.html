@@ -1,0 +1,28 @@
+<div fxLayout="row" fxLayoutAlign="center center">
+<div *ngFor="let quest of this.board.results | keyvalue">
+    <div class="container">
+
+          <div>Quest {{quest.key}}</div>
+          <div class="dddww" *ngIf="quest.value.ppp == '1'">Regular</div>
+          <div class="dddww" *ngIf="quest.value.ppp == '2'">Flush</div>
+          <div class="dddww" *ngIf="quest.value.ppp == '3'">Two Fails</div>
+
+          <div *ngIf="!quest.value.final">
+            <img src="./assets/none-{{quest.value.numofplayers}}.png" width="70" valt=""/>
+          </div>
+
+          <div *ngIf="quest.value.final == 1">
+            <img src="./assets/fail.png" width="70" alt=' {{quest.value.failures}} Fails, {{quest.value.successes}} Success, {{quest.value.reversals}} Reversal, {{quest.value.beasts}} Beast'
+                 title=' {{quest.value.failures}}  Fails, {{quest.value.successes}} Success, {{quest.value.reversals}} Reversal, {{quest.value.beasts}} Beast'/>
+
+          </div>
+
+          <div *ngIf="quest.value.final == 2">
+            <img src="./assets/success.png" width="70" alt=' {{quest.value.failures}}  Fails,  {{quest.value.successes}} Success,  {{quest.value.reversals}} Reversal, {{quest.value.beasts}} Beast'
+                 title=' {{quest.value.failures}}  Fails,  {{quest.value.successes}} Success,  {{quest.value.reversals}} Reversal, {{quest.value.beasts}} Beast'/>
+
+          </div>
+
+    </div>
+</div>
+</div>

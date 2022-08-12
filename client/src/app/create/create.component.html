@@ -1,0 +1,90 @@
+<mat-toolbar  [ngStyle]="{backgroundColor: 'transparent'}" color="black">
+  <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+    <mat-icon [ngStyle]="{'font-size': '50px', 'color': 'white'}">menu</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item (click)="save()">
+      <mat-icon>play_circle_filled</mat-icon>
+      <span>Start</span>
+    </button>
+    <button mat-menu-item  (click)="return()">
+      <mat-icon>delete_sweep</mat-icon>
+      <span>Cancel</span>
+    </button>
+  </mat-menu>
+
+
+
+
+</mat-toolbar>
+
+
+<div [ngStyle]="{background: 'assets/background.jfif'}" class="app-content">
+
+
+  <div class="div-or">
+    <mat-list>
+      <div class="headline" align="center" mat-subheader style="text-align: center;">New Game Configuration</div>
+
+
+      <table style="text-align: center; margin-left:auto; margin-right:auto;" align="center" width="60%">
+        <tr>
+          <td>
+            <b>Good Characters ({{ this.pl.boardGame.players.total - this.numOfPlayersToBads[this.pl.boardGame.players.total] - this.amtGood }} left)</b>
+          </td>
+          <td>
+            <b>Bad Characters ({{ this.numOfPlayersToBads[this.pl.boardGame.players.total] - this.amtBad }} left)</b>
+          </td>
+
+        </tr>
+        <tr>
+          <td>
+            <mat-list-item *ngFor="let badguy of allGoodChracters">
+              <img mat-list-avatar class='{{badguy.name}}' width="150px">
+              <div mat-line>
+                <input  type="checkbox" [(ngModel)]=badguy.checked [disabled]="!badguy.checked && (maxChracters || maxGoods)" (change)="onChange($event.target.checked)">{{badguy.name}}
+              </div>
+            </mat-list-item>
+
+
+          </td>
+
+
+          <td valign="top">
+            <mat-list-item *ngFor="let badguy of allBadChracters">
+              <div mat-line >
+              <img mat-list-avatar class='{{badguy.name}}' width="200px">
+
+                <input  type="checkbox" [(ngModel)]=badguy.checked  [disabled]="!badguy.checked && (maxChracters || maxBads)" (change)="onChangeBad(badguy.name, $event.target.checked)">{{badguy.name}}
+                &nbsp;&nbsp;
+                <input  type="checkbox" [hidden]="!badguy.checked || badguy.name=='Assassin'" [(ngModel)]=badguy.assassin [disabled]="this.numOfAssassin==1" (change)="onChangeAssassin($event.target.assassin)">
+                <ng-container *ngIf="badguy.checked && badguy.name!='Assassin'"> as Assassin</ng-container>
+              </div>
+            </mat-list-item>
+
+
+          </td>
+        </tr>
+
+
+
+        <tr style="text-align: center; margin-left:auto; margin-right:auto; width:100%; align-content: center; align-items: center">
+          <input [(ngModel)]="this.excalibur" type="checkbox">Excalibur
+        </tr>
+
+        <tr style="text-align: center; margin-left:auto; margin-right:auto; width:100%; align-content: center; align-items: center">
+          <input [(ngModel)]="this.lady" type="checkbox">Lady Of The Lake
+        </tr>
+
+        <tr style="text-align: center; margin-left:auto; margin-right:auto; width:100%; align-content: center; align-items: center">
+          <button class="my-class" mat-stroked-button (click)="save()">Start!</button>
+        </tr>
+
+
+      </table>
+
+
+    </mat-list>
+
+  </div>
+</div>

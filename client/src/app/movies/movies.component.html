@@ -1,0 +1,726 @@
+
+<mat-sidenav position="end" fixedInViewport="true" #sidenav mode="push">
+
+  <mat-accordion>
+
+    <mat-expansion-panel *ngFor="let ch of this.pl.boardGame.characters  | keyvalue" style="width: 210px">
+      <mat-expansion-panel-header>
+
+
+        <mat-panel-title>
+          <div style="height: 70px; vertical-align: middle; align-content: center" class="dfre">
+            <img  src="./assets/{{ch.key}}.png" alt="{{ch.key}}" class="avatar3">
+            {{ch.key}}
+          </div>
+
+
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      <div *ngIf="ch.value.loyalty && ch.value.loyalty.length > 0" class='{{ch.value.loyalty}}'><b>Loyalty:</b> {{ch.value.loyalty}}</div>
+      <div *ngIf="ch.value.canSeeAsColor && ch.value.canSeeAsColor.length > 0" style="color: gold"><b>Can See As Color:</b> {{ch.value.canSeeAsColor}}</div>
+      <div *ngIf="ch.value.canSeeSpecifically && ch.value.canSeeSpecifically.length > 0" style="color: gold"><b>Can See Specifically:</b> {{ch.value.canSeeSpecifically}}</div>
+
+      <div *ngIf="ch.value.seenAsColorBy && ch.value.seenAsColorBy.length > 0" style="color: gold"><b>Seen As Color By:</b> {{ch.value.seenAsColorBy}}</div>
+      <div *ngIf="ch.value.seenSpecificallyBy && ch.value.seenSpecificallyBy.length > 0" style="color: gold"><b>Seen Specifically By:</b> {{ch.value.seenSpecificallyBy}}</div>
+
+      <div *ngIf="ch.value.canVote && ch.value.canVote.length > 0" style="color: deeppink"><b>Vote:</b> {{ch.value.canVote}}</div>
+      <div *ngIf="ch.value.canVoteOnFlush && ch.value.canVoteOnFlush.length > 0" style="color: darkmagenta"><b>Flush Vote:</b> {{ch.value.canVoteOnFlush}}</div>
+      <div *ngIf="ch.value.murderedBy && ch.value.murderedBy.length > 0" style="color: darkorange"><b>Murdered By:</b> {{ch.value.murderedBy}}</div>
+      <div *ngIf="ch.value.murder && ch.value.murder.length > 0" style="color: chartreuse"><b>Murder:</b> {{ch.value.murder}}</div>
+      <div *ngIf="ch.value.specialRole && ch.value.specialRole.length > 0" style="color: skyblue"><b>Special Role:</b> {{ch.value.specialRole}}</div>
+    </mat-expansion-panel>
+
+
+    <mat-expansion-panel *ngIf= "this.pl.boardGame && this.pl.boardGame.excalibur" style="width: 210px">
+      <mat-expansion-panel-header>
+
+
+        <mat-panel-title>
+          <div style="height: 70px; vertical-align: middle; align-content: center" class="dfre">
+            <img  src="./assets/sword.png" alt="Excalibur" class="avatar3">
+            Excalibur
+          </div>
+
+
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      Head of the mission picks another mission member and grant him the Excalibur.
+      After the votes are done, the Excalibur holder may pick another mission member and flip his vote.
+    </mat-expansion-panel>
+
+
+    <mat-expansion-panel *ngIf= "this.pl.boardGame && this.pl.boardGame.isLady" style="width: 210px">
+      <mat-expansion-panel-header>
+
+
+        <mat-panel-title>
+          <div style="height: 70px; vertical-align: middle; align-content: center" class="dfre">
+            <img  src="./assets/lady.png" alt="Lady Of The Lake" class="avatar3">
+            Lady Of The Lake
+          </div>
+
+
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      Last player in the list gets the "Lady of the lake" at the end of the 2nd round.
+      With this card he is able to check one of other players lawyalty.
+      The pplayer who is inspected cannot lie, and will be able to use the card on the next round.
+    </mat-expansion-panel>
+
+  </mat-accordion>
+
+</mat-sidenav>
+<mat-toolbar class="expanded-toolbar" style="background-color: black;">
+    <span>
+      <button mat-button [matMenuTriggerFor]="menu"><mat-icon style="color: white; size: 15px">menu</mat-icon></button>
+<mat-menu #menu="matMenu">
+    <button mat-menu-item *ngIf="authService.isAuthenticated" [disabled]="true">
+              Connected as <b>{{authService.name}}</b>
+            </button>
+              <button mat-menu-item *ngIf="!authService.isAuthenticated" (click)="add()">
+              Register
+            </button>
+                <button mat-menu-item *ngIf="this.pl.boardGame.state > 0" (click)="reset()" >
+                Reset Game
+              </button>
+
+              <button mat-menu-item *ngIf="(!this.pl.boardGame.state || (this.pl.boardGame.state) == 0) && this.pl.boardGame.players && this.pl.boardGame.players.total > 0" (click)="create()" >
+                Start Game
+              </button>
+              <button mat-menu-item *ngIf="authService.isAuthenticated" (click)="logout()">
+                Logout
+              </button>
+</mat-menu>
+    </span>
+
+
+
+  <div fxLayout="row" fxShow="false" fxShow.gt-sm>
+
+    <ng-container class="tab">
+      <table >
+        <tr>
+
+          <td>
+            <div  *ngIf= "(this.pl.boardGame.state && (this.pl.boardGame.state) != 0)" mat-card-avatar style="width: 20px; height: 20px;" class='{{this.pl.boardGame.secrets.character }}'></div>
+          </td>
+          <td style="font-size: 10px; color: white">
+            <ng-container  *ngIf= "(this.pl.boardGame.state && (this.pl.boardGame.state) != 0)"  style="font-size: 6px;" >
+              <b> {{this.pl.boardGame.secrets.character}}</b>
+            </ng-container>
+            <ng-container  *ngIf= "(this.pl.boardGame.state && (this.pl.boardGame.state) != 0) && this.pl.boardGame.secrets.secrets"  style="font-size: 13px;" >
+              , your secrets: {{this.pl.boardGame.secrets.secrets }}
+            </ng-container>
+          </td>
+
+          <td width="100px">
+
+          </td>
+<td align="right"  >
+  <div class="button1" align="right" style="align-content: flex-end">
+
+    <ng-container  *ngIf= "(this.pl.boardGame.state && (this.pl.boardGame.state) != 0)" >
+      <button mat-stroked-button style="background-color: white; color: black" (click)="sidenav.toggle()">Other Roles</button>
+    </ng-container>
+
+
+    <mat-sidenav-container>
+
+
+      <mat-sidenav-content>
+
+
+      </mat-sidenav-content>
+    </mat-sidenav-container>
+  </div>
+
+</td>
+
+
+
+
+
+
+        </tr>
+      </table>
+
+    </ng-container>
+
+
+
+
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mat-toolbar>
+
+<div style="font-size: 11px; border-style: solid; border-color: darkorange; border-width: thin; background-color: rgb(208, 253, 6); align-content: center; horiz-align: center; text-align: center" *ngIf="this.pl.boardGame && (this.pl.boardGame.state && ((this.pl.boardGame.state) > 0))">
+
+
+
+  STATE: {{this.pl.boardGame.stateDescription}}
+
+
+
+
+</div>
+
+<div style="font-size: 11px; border-style: solid; border-color: darkorange; border-width: thin; background-color: gold; align-content: center; horiz-align: center; text-align: center" *ngIf="false && this.pl.boardGame && this.pl.boardGame.suggester != null && (this.pl.boardGame.state && ((this.pl.boardGame.state) == 2)) && this.authService.name != this.pl.boardGame.suggester">
+
+
+
+    {{this.pl.boardGame.suggester}} is choosing players...  (<b>{{this.pl.boardGame.suggestedTemporaryPlayers}}</b>)
+
+
+
+
+</div>
+
+<div class="signin-content" *ngIf="!authService.isAuthenticated">
+  <mat-card>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="login()">
+        <p>Please login to continue</p>
+        <mat-form-field class="full-width-input">
+          <input matInput placeholder="User" formControlName="username" required>
+        </mat-form-field>
+        <mat-form-field class="full-width-input">
+          <input matInput type="password" placeholder="Password" formControlName="password" required>
+        </mat-form-field>
+        <button mat-raised-button color="primary" type="submit">Login</button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="app-content">
+  <div>
+
+
+
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.state && (this.pl.boardGame.state) == 6" class='div-orw'>
+
+      <mat-card  class='div-orwgood'>
+        <mat-card-header>
+          <mat-card-title>The Goods Won!
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.state && (this.pl.boardGame.state) == 14" class='div-orw'>
+
+      <mat-card  class='div-orwga'>
+        <mat-card-header>
+          <mat-card-title>Sir-Gawain Won!
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.state && (this.pl.boardGame.state) == 7" class='div-orw'>
+
+      <mat-card  class='div-orwbad'>
+        <mat-card-header>
+          <mat-card-title>The Bads Won!
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.state && (this.pl.boardGame.state) == 10" class='div-orw'>
+
+      <mat-card  class='div-orwga'>
+        <mat-card-header>
+          <mat-card-title>Gawain Won!
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.sir && this.pl.boardGame.sir.options && (this.pl.boardGame.state && (this.pl.boardGame.state) == 1)" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>{{this.authService.name}}, Please Choose
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+
+
+            <mat-radio-group aria-label="Select an option" [(ngModel)] = "this.assassinKill">
+
+              <ng-container *ngFor="let ch of this.pl.boardGame.sir.options">
+
+
+                <mat-radio-button value="{{ch}}">{{ch}}</mat-radio-button>
+
+
+              </ng-container>
+            </mat-radio-group>
+          <button mat-button (click)="SirPick()">Choose!</button>
+
+
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+
+
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.murder && (this.pl.boardGame.state && ((this.pl.boardGame.state) == 9 || (this.pl.boardGame.state) == 8)) && this.authService.name === this.pl.boardGame.murder.by" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+        </mat-card-header>
+        <mat-card-content>
+
+          <ng-container *ngIf="this.pl.boardGame.murder.byCharacter === 'Assassin' else allrest">
+            Please choose character to kill:
+            <mat-radio-group aria-label="Select an option" [(ngModel)] = "this.assassinKill">
+            <ng-container *ngFor="let ch of this.pl.boardGame.murder.target">
+                <mat-radio-button value="{{ch}}">{{ch}}</mat-radio-button>
+            </ng-container>
+              <div style="color: red"> {{this.assassinKillErrorMsg}} </div>
+            </mat-radio-group>
+<br>
+          </ng-container>
+          <ng-template #allrest >
+            {{this.pl.boardGame.murder.target.length}} Please Kill The Character/s:
+            <ng-container *ngFor="let ch of this.pl.boardGame.murder.target">
+              {{ch}}
+            </ng-container>
+
+          </ng-template>
+
+
+          <ng-container *ngFor="let player of this.pl.boardGame.players.all">
+            <input [(ngModel)]="player.ch" type="checkbox">{{player.player}}
+          </ng-container>
+          <button mat-button (click)="Murder()">Kill!</button>
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.suggester && (this.pl.boardGame.state && (this.pl.boardGame.state) == 2) && this.authService.name === this.pl.boardGame.suggester" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>{{this.authService.name}}, Please Suggest {{this.pl.boardGame.results[this.pl.boardGame.current].numofplayers}} Players For Next Quest</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+
+          <ng-container *ngFor="let player of this.pl.boardGame.players.active">
+
+            <input type="checkbox" [disabled]="!this.playersSuggestion.has(player.player) && maxNo" (change)="onChange(player.player, $event.target.checked)"/>{{player.player}}
+
+          </ng-container>
+
+          <ng-container *ngIf="this.pl.boardGame.excalibur">
+            <ng-container *ngIf="this.playersSuggestion.size > 0">
+              &nbsp;&nbsp;&nbsp;&nbsp;Excalibur:
+            </ng-container>
+
+
+            <ng-container *ngFor="let player of this.pl.boardGame.players.active">
+
+              <ng-container *ngIf="this.playersSuggestion.has(player.player) && player.player != this.authService.name">
+
+                <input type="checkbox" (change)="onChangeExcaliburSuggest(player.player, $event.target.checked)"/>{{player.player}}
+
+
+              </ng-container>
+
+            </ng-container>
+
+          </ng-container>
+        <b>{{this.errMsg}}</b>
+          <button *ngIf="maxNo" mat-button (click)="Suggest()">Send</button>
+
+
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div *ngIf="this.pl.boardGame &&
+    (this.pl.boardGame.state && (this.pl.boardGame.state) == 11)
+    && this.authService.name === this.pl.boardGame.ladySuggester" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>
+            {{this.authService.name}}, Please choose a player to give him the lady of the lake.
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <ng-container *ngFor="let player of this.pl.boardGame.players.all">
+            <button *ngIf="player.player != this.pl.boardGame.ladyPreviousSuggester
+            && (player.player != this.authService.name)" mat-button (click)="LadySuggest(player.player)">{{player.player}}</button>
+          </ng-container>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div *ngIf="this.pl.boardGame &&
+    (this.pl.boardGame.state && (this.pl.boardGame.state) == 12)
+    && this.authService.name === this.pl.boardGame.ladyChosenPlayer" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>
+            {{this.authService.name}}, Please answer to lady of the lake with your loyalty:
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <ng-container *ngFor="let opt of this.pl.boardGame.ladyResponseOptions">
+            <button mat-button [ngClass]="{'loyalty-good' : opt === 'Good',
+            'loyalty-bad': opt === 'Bad'}" (click)="LadyResponse(opt)">{{opt}}</button>
+          </ng-container>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div *ngIf="this.pl.boardGame &&
+    (this.pl.boardGame.state && (this.pl.boardGame.state) == 13)
+    && this.authService.name === this.pl.boardGame.ladySuggester" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>
+            {{this.pl.boardGame.ladyChosenPlayer}} loyalty: {{this.pl.boardGame.ladyResponse}}.
+            What would you like to tell all players?
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <button mat-button class="loyalty-good" (click)="LadyPublish('Good')">Good</button>
+          <button mat-button class="loyalty-bad" (click)="LadyPublish('Bad')">Bad</button>
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+
+
+
+
+
+
+
+    <div *ngIf="this.pl.boardGame && this.pl.boardGame.suggester && (this.pl.boardGame.state && (this.pl.boardGame.state) == 5) && this.authService.name === this.pl.boardGame.suggestedExcalibur" class='div-orw'>
+
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>{{this.authService.name}}, Please pick a player to change his vote</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+
+
+
+          <ng-container *ngFor="let player of this.pl.boardGame.suggestedPlayers">
+
+            <input type="checkbox" [disabled]="!this.playersSuggestion.has(player) && maxNo" (change)="onChangeExcalibur(player, $event.target.checked)"/>{{player}}
+
+          </ng-container>
+
+
+          <button mat-button (click)="Pick()">Pick</button>
+
+
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+
+    <div *ngIf="(this.pl.boardGame.state && (this.pl.boardGame.state) == 3) && this.pl.showSuggestion && this.pl.boardGame.suggestedPlayers" class='div-orw'>
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>{{this.pl.boardGame.suggester}}'s suggestion:
+            <ng-container *ngFor="let player of this.pl.boardGame.suggestedPlayers">
+              {{player}}
+            </ng-container>
+            <ng-container *ngIf="this.pl.boardGame.excalibur">
+             | Excalibur given to: {{this.pl.boardGame.suggestedExcalibur}}
+            </ng-container>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+
+          <button mat-mini-fab class="div-yes" (click)="SendGoodVote()"><mat-icon>thumb_up</mat-icon></button>
+
+          <ng-container *ngIf="!this.pl.boardGame.onlyGoodSuggested">
+          <button class="div-no" mat-mini-fab (click)="SendBadVote()"><mat-icon>thumb_down</mat-icon></button>
+          </ng-container>
+
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+
+    <div *ngIf="(this.pl.boardGame.state && (this.pl.boardGame.state) == 4) && this.pl.boardGame.suggestedPlayers && this.pl.boardGame.suggestedPlayers.includes(this.authService.name) && (!this.pl.boardGame.PlayersVotedForCurrQuest || !this.pl.boardGame.PlayersVotedForCurrQuest.includes(this.authService.name))" class='div-orw'>
+      <mat-card  class='div-orw'>
+        <mat-card-header>
+          <mat-card-title>Vote For Quest!</mat-card-title>
+        </mat-card-header>
+
+        <mat-radio-group aria-label="Select an option" [(ngModel)] = "journeyVote.vote">
+
+            <ng-container>
+              <mat-radio-button type="radio" name="success" value=1 display="none" id="pp" [disabled]="!this.pl.boardGame.optionalVotes.includes('Success')">
+                <label for="pp">
+                  <img src="./assets/Success_vote.png" width="120px"/>
+                </label>
+              </mat-radio-button>
+            </ng-container>
+
+
+            <ng-container>
+              <mat-radio-button type="radio" name="reversal" value=2 display="none" id="pp2" [disabled]="!this.pl.boardGame.optionalVotes.includes('Reversal')">
+                <label for="pp2">
+
+                  <img src="./assets/Reversal_vote.png" width="120px"/>
+                </label>
+              </mat-radio-button>
+            </ng-container>
+
+
+            <ng-container>
+              <mat-radio-button type="radio" name="fail" value=0 display="none" id="pp3" [disabled]="!this.pl.boardGame.optionalVotes.includes('Fail')">
+                <label for="pp3">
+
+                  <img src="./assets/Fail_vote.png" width="120px"/>
+                </label>
+              </mat-radio-button>
+            </ng-container>
+
+          <ng-container>
+            <mat-radio-button type="radio" name="beast" value=3 display="none" id="pp4" [disabled]="!this.pl.boardGame.optionalVotes.includes('Beast')">
+              <label for="pp4">
+
+                <img src="./assets/Beast_vote.png" width="120px"/>
+              </label>
+            </mat-radio-button>
+          </ng-container>
+
+          <ng-container>
+            <mat-radio-button type="radio" name="avalonpower" value=5 display="none" id="pp5" [disabled]="!this.pl.boardGame.optionalVotes.includes('Avalon Power')">
+              <label for="pp5">
+
+                <img src="./assets/avalon_power.png" width="120px"/>
+              </label>
+            </mat-radio-button>
+          </ng-container>
+
+          <ng-container>
+            <mat-radio-button type="radio" name="emptycard" value=6 display="none" id="pp6" [disabled]="!this.pl.boardGame.optionalVotes.includes('Empty')">
+              <label for="pp6">
+
+                <img src="./assets/empty.png" width="120px"/>
+              </label>
+            </mat-radio-button>
+          </ng-container>
+
+          <p><button mat-button (click)="JourneyVote()">Vote!</button></p>
+
+        </mat-radio-group>
+      </mat-card>
+
+    </div>
+
+
+    <div fxLayout="row" fxLayoutAlign="center end">
+
+      <app-players-table></app-players-table>
+
+    </div>
+
+
+
+    <div class="stats">
+
+      <mat-tab-group animationDuration="0ms" class="stats2" mat-align-tabs="start">
+        <!-- #enddocregion align-start -->
+        <mat-tab class="stats3" label="Chat">
+
+          <div class="stats3" >
+
+
+            <app-chat *ngIf="authService.isAuthenticated"></app-chat>
+
+          </div>
+
+        </mat-tab>
+
+        <div *ngIf="this.pl.boardGame.state != 0">
+
+          <mat-tab class="stats3" label="Statistics">
+            <div class="xxssor">
+
+              <table *ngIf="this.pl.boardGame.archive && this.pl.boardGame.state != 0" class="xxss">
+                <tr class="xxssw">
+                  <td class="xxssw">Player</td>
+
+                  <td class="xxssw" *ngFor="let player of this.pl.boardGame.players.all">
+                    {{ player.player | limitTo: "7" }}
+
+                  </td>
+
+                  <td class="xxssw">Votes</td>
+
+
+                </tr>
+
+                <ng-container *ngFor="let questItem of this.pl.boardGame.archive" >
+                  <tr class="xxssw" [hidden]='(this.pl.boardGame.current != (questItem.questId | round)) && !questItem.isSuggestionAccepted && this.filterqu[questItem.questId | round]'>
+                    <td class="xxssw" (click)="FilterQuests(questItem.questId)" >
+
+                      <ng-container *ngIf="questItem.switch">
+                        <img src="./assets/switch.png" width="20px"/>
+                      </ng-container>
+                      <ng-container *ngIf="questItem.avalon_power">
+                        <img src="./assets/avalon_power.png" width="30px"/>
+                      </ng-container>
+                      {{questItem.questId}}</td>
+
+                    <ng-container *ngFor="let player of this.pl.boardGame.players.all">
+
+
+                      <td [ngClass]="{'green' : questItem.playersAcceptedQuest && questItem.playersAcceptedQuest.includes(player.player), 'red': questItem.playersNotAcceptedQuest && questItem.playersNotAcceptedQuest.includes(player.player)}" class="xxssw">
+                        <div>
+
+                          <ng-container *ngIf="questItem.excaliburChoose == player.player">
+                            <img src="./assets/question_mark.png" title='Excalibur performed on this vote' width="15px"/>
+                          </ng-container>
+
+                          <ng-container *ngIf="questItem.excaliburPicker == player.player">
+                            <img src="./assets/sword.png" title='Holds Excalibur' width="15px"/>
+                          </ng-container>
+
+
+                          <ng-container *ngIf="questItem.LadySuggester == player.player">
+                            <img src="./assets/lady.png" title='Hold Lady Of The Lake' width="15px"/>
+                          </ng-container>
+
+                          <ng-container *ngIf="questItem.LadyChosenPlayer == player.player &&
+              questItem.LadySuggesterPublishToTheWorld === 'Good'">
+                            <img src="./assets/success.png" title='Lady says that this player is Good' width="25px"/>
+                          </ng-container>
+                          <ng-container *ngIf="questItem.LadyChosenPlayer == player.player &&
+              questItem.LadySuggesterPublishToTheWorld === 'Bad'">
+                            <img src="./assets/fail.png" title='Lady says that this player is Bad' width="25px"/>
+                          </ng-container>
+
+
+                          <ng-container *ngIf="questItem.suggestedPlayers && questItem.suggestedPlayers.includes(player.player)">
+                            <mat-icon matListIcon [ngStyle]="{'color':'white', 'width':'15px'}">directions_walk</mat-icon>
+                          </ng-container>
+
+                          <ng-container *ngIf="questItem.suggester.player == player.player">
+                            <img src="./assets/leader.png" width="15px"/>
+                          </ng-container>
+
+
+
+                        </div></td>
+
+                    </ng-container>
+
+                    <td class="xxssw">
+                    <ng-container class="xxssw" *ngFor='let i of counter(questItem.numberOfFailures)'>
+                      <img src="./assets/Fail_vote.png" alt='Fail' title='Fail' width="60px"/>
+                    </ng-container>
+
+                    <ng-container class="xxssw" *ngFor='let i of counter(questItem.numberOfReversal)'>
+                      <img src="./assets/Reversal_vote.png" alt='Reversal' title='Reversal'width="60px"/>
+                    </ng-container>
+
+                    <ng-container class="xxssw" *ngFor='let i of counter(questItem.numberOfSuccesses)'>
+                      <img src="./assets/Success_vote.png" alt='Success' title='Success' width="60px"/>
+                    </ng-container>
+
+                    <ng-container class="xxssw" *ngFor='let i of counter(questItem.numberOfBeasts)'>
+                      <img src="./assets/Beast_vote.png" alt='Beast' title='Beast' width="60px"/>
+                    </ng-container>
+
+                    <ng-container class="xxssw" *ngFor='let i of counter(questItem.numberOfEmpty)'>
+                      <img src="./assets/empty.png" alt='Empty' title='Empty' width="60px"/>
+                    </ng-container>
+
+                    </td>
+
+
+
+
+                  </tr></ng-container>
+
+
+              </table>
+
+
+            </div>
+
+
+          </mat-tab>
+        </div>
+
+
+
+      </mat-tab-group>
+
+
+
+    </div>
+
+    <br><br><p></p>
+
+
+
+
+  </div>
+</div>

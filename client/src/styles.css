@@ -1,0 +1,404 @@
+/* You can register global styles to this file, and also import other style files */
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+
+
+.character-img {
+  border-radius: 50%;
+}
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.PurpleSee {
+  background-image: url('/assets/purple_see.jpeg');
+  background-size: cover;
+}
+
+.GreenSee {
+  background-image: url('/assets/green_see.jpeg');
+  background-size: cover;
+}
+
+.GreenSeen {
+  background-image: url('/assets/green_seen.jpeg');
+  background-size: cover;
+}
+
+.PurpleSeen {
+  background-image: url('/assets/purple_seen.jpeg');
+  background-size: cover;
+}
+
+.MorganaMerlin {
+  background-image: url('/assets/MorganaMerlin.png');
+  background-size: cover;
+}
+
+.MorganaViviana {
+  background-image: url('/assets/MorganaViviana.png');
+  background-size: cover;
+}
+
+.GenericBlue {
+  background-image: url('/assets/genericblue.png');
+  background-size: cover;
+}
+
+.GenericRed {
+  background-image: url('/assets/genericred.png');
+  background-size: cover;
+}
+
+.Percival {
+  background-image: url('/assets/Percival.png');
+  background-size: cover;
+}
+
+.MerlinA {
+  visibility: hidden;
+}
+.MerlinA:hover  {
+  visibility: visible;
+}
+
+
+.Viviana {
+  background-image: url('/assets/Viviana.png');
+  background-size: cover;
+}
+
+.Tristan {
+  background-image: url('/assets/Tristan.png');
+  background-size: cover;
+}
+
+.Prince-Claudin {
+  background-image: url('/assets/Prince-Claudin.png');
+  background-size: cover;
+}
+
+.Uther-Pendragon {
+  background-image: url('/assets/Uther-Pendragon.png');
+  background-size: cover;
+}
+
+.King-Claudin {
+  background-image: url('/assets/King-Claudin.png');
+  background-size: cover;
+}
+
+.Nirlem {
+  background-image: url('/assets/Nirlem.png');
+  background-size: cover;
+}
+
+.Iseult {
+  background-image: url('/assets/Iseult.png');
+  background-size: cover;
+}
+
+.Titanya {
+  background-image: url('/assets/Titanya.png');
+  background-size: cover;
+}
+
+.Nimue {
+  background-image: url('/assets/Nimue.png');
+  background-size: cover;
+}
+
+.Galahad {
+  background-image: url('/assets/Galahad.png');
+  background-size: cover;
+}
+
+.Sir-Kay {
+  background-image: url('/assets/Sir-Kay.png');
+  background-size: cover;
+}
+
+.Seer {
+  background-image: url('/assets/Seer.png');
+  background-size: cover;
+}
+
+.Accolon {
+  background-image: url('/assets/Accolon.png');
+  background-size: cover;
+}
+
+.King-Arthur {
+  background-image: url('/assets/King-Arthur.png');
+  background-size: cover;
+}
+
+.Sir-Robin {
+  background-image: url('/assets/Sir-Robin.png');
+  background-size: cover;
+}
+
+.Pellinore {
+  background-image: url('/assets/Pellinore.png');
+  background-size: cover;
+}
+
+.The-Questing-Beast {
+  background-image: url('/assets/The-Questing-Beast.png');
+  background-size: cover;
+}
+
+.The-Coward {
+  background-image: url('/assets/The-Coward.png');
+  background-size: cover;
+}
+
+.Loyal-Servent-Of-Arthur {
+  background-image: url('/assets/Loyal-Servent-Of-Arthur.png');
+  background-size: cover;
+}
+
+.Loyal-Servent-Of-Arthur1 {
+  background-image: url('/assets/Loyal-Servent-Of-Arthur1.png');
+  background-size: cover;
+}
+
+.Loyal-Servent-Of-Arthur2 {
+  background-image: url('/assets/Loyal-Servent-Of-Arthur2.png');
+  background-size: cover;
+}
+
+.Loyal-Servent-Of-Arthur3 {
+  background-image: url('/assets/Loyal-Servent-Of-Arthur3.png');
+  background-size: cover;
+}
+
+.Loyal-Servent-Of-Arthur4 {
+  background-image: url('/assets/Loyal-Servent-Of-Arthur4.png');
+  background-size: cover;
+}
+
+.Guinevere {
+  background-image: url('/assets/Guinevere.png');
+  background-size: cover;
+}
+
+.Lancelot {
+  background-image: url('/assets/Lancelot.png');
+  background-size: cover;
+}
+
+.Lancelot-Good {
+  background-image: url('/assets/Lancelot-Good.png');
+  background-size: cover;
+}
+
+.Lancelot-Bad {
+  background-image: url('/assets/Lancelot-Bad.png');
+  background-size: cover;
+}
+
+.Merlin-Apprentice {
+  background-image: url('/assets/Merlin-Apprentice.png');
+  background-size: cover;
+}
+
+.Puck {
+  background-image: url('/assets/Puck.png');
+  background-size: cover;
+}
+
+.Ginevra {
+  background-image: url('/assets/Ginevra.png');
+  background-size: cover;
+}
+
+.Polygraph {
+  background-image: url('/assets/Polygraph.png');
+  background-size: cover;
+}
+
+.Lot {
+  background-image: url('/assets/Lot.png');
+  background-size: cover;
+}
+
+.Morgana {
+  background-image: url('/assets/Morgana.png');
+  background-size: cover;
+}
+
+.Good-Angel {
+  background-image: url('/assets/Good-Angel.png');
+  background-size: cover;
+}
+
+.Assassin {
+  background-image: url('/assets/Assassin.png');
+  background-size: cover;
+}
+
+.Mordred {
+  background-image: url('/assets/Mordred.png');
+  background-size: cover;
+}
+
+
+.Oberon {
+  background-image: url('/assets/Oberon.png');
+  background-size: cover;
+}
+
+.Cordana {
+  background-image: url('/assets/Cordana.png');
+  background-size: cover;
+}
+
+.Gawain {
+  background-image: url('/assets/Gawain.png');
+  background-size: cover;
+}
+
+.Bad-Angel {
+  background-image: url('/assets/Bad-Angel.png');
+  background-size: cover;
+}
+
+.Queen-Mab {
+  background-image: url('/assets/Queen-Mab.png');
+  background-size: cover;
+}
+
+.Balin {
+  background-image: url('/assets/Balin.png');
+  background-size: cover;
+}
+
+.Maeve {
+  background-image: url('/assets/Maeve.png');
+  background-size: cover;
+}
+
+.Agravain {
+  background-image: url('/assets/Agravain.png');
+  background-size: cover;
+}
+
+.Nerzhul {
+  background-image: url('/assets/Nerzhul.png');
+  background-size: cover;
+}
+
+.Mora {
+  background-image: url('/assets/Mora.png');
+  background-size: cover;
+}
+
+.Melwas {
+  background-image: url('/assets/Melwas.png');
+  background-size: cover;
+}
+
+.Galaad {
+  background-image: url('/assets/Galaad.png');
+  background-size: cover;
+}
+
+.Raven {
+  background-image: url('/assets/Raven.png');
+  background-size: cover;
+}
+
+.Balain {
+  background-image: url('/assets/Balain.png');
+  background-size: cover;
+}
+
+.Sir-Gawain {
+  background-image: url('/assets/Sir-Gawain.png');
+  background-size: cover;
+}
+
+.Stray {
+  background-image: url('/assets/Stray.png');
+  background-size: cover;
+}
+
+.Ector {
+  background-image: url('/assets/Ector.png');
+  background-size: cover;
+}
+
+.Elaine {
+  background-image: url('/assets/Elaine.png');
+  background-size: cover;
+}
+
+.Blanchefleur {
+  background-image: url('/assets/Blanchefleur.png');
+  background-size: cover;
+}
+
+.Tom-Thumb {
+  background-image: url('/assets/Tom-Thumb.png');
+  background-size: cover;
+}
+
+.Bors {
+  background-image: url('/assets/Bors.png');
+  background-size: cover;
+}
+
+.Minion-Of-Mordred {
+  background-image: url('/assets/Minion-Of-Mordred.png');
+  background-size: cover;
+}
+
+.Minion-Of-Mordred1 {
+  background-image: url('/assets/Minion-Of-Mordred1.png');
+  background-size: cover;
+}
+
+.Minion-Of-Mordred2 {
+  background-image: url('/assets/Minion-Of-Mordred2.png');
+  background-size: cover;
+}
+
+.Dagonet {
+  background-image: url('/assets/Dagonet.png');
+  background-size: cover;
+}
+
+.Gornemant {
+  background-image: url('/assets/Gornemant.png');
+  background-size: cover;
+}
+
+.Dagonet {
+  background-image: url('/assets/Dagonet.png');
+  background-size: cover;
+}
+
+.Merlin {
+  background-image: url('/assets/Merlin.png');
+  background-size: cover;
+}
+
+.Meliagant {
+  background-image: url('/assets/Meliagant.png');
+  background-size: cover;
+}
+mat-icon.on {
+  color: white;
+}
+
+.fg-white {
+  color: white;
+}
+
+.fg-white-input .mat-form-field-underline {
+  background: white !important;
+}
+

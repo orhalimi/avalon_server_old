@@ -1,0 +1,114 @@
+<div *ngIf="board" fxLayout="row" fxLayoutAlign="center center" style="margin-top: 80px;">
+  <div class="circle">
+    <div *ngFor="let player of board.players.all; let i = index" class="player-circle-icons"  [ngStyle]="iconsPosition[i]">
+      <mat-icon [ngClass]="{'on': board.suggestedPlayers && board.suggestedPlayers.includes(player.player) && (board.state == 4 || board.state == 3)}">security</mat-icon>
+      <mat-icon svgIcon="sword" [ngClass]="{'on': board.suggestedExcalibur && player.player == board.suggestedExcalibur}"></mat-icon>
+      <mat-icon svgIcon="lady" [ngClass]="{'on': board.ladySuggester && player.player == board.ladySuggester}"></mat-icon>
+    </div>
+    <div *ngFor="let player of board.players.all; let i = index" class="player-circle" [ngStyle]="position[i]">
+      <div *ngIf="board.suggesterVeto == player.player">
+        <img src="./assets/hammer.png" class="veto-hammer" />
+      </div>
+
+      <div *ngIf="board.state == 3 &&
+      ((!board.PlayersVotedYesForSuggestion || !board.PlayersVotedYesForSuggestion.includes(player.player))
+      && (!board.PlayersVotedNoForSuggestion || !board.PlayersVotedNoForSuggestion.includes(player.player))); else done">
+        <mat-icon matListIcon class="votedornot">textsms</mat-icon>
+      </div>
+
+      <div *ngIf="board.state > 0 && board.playerToCharacters &&
+      board.playerToCharacters[player.player] && board.playerToCharacters[player.player].isKilled">
+        <img class="votedornot" src="./assets/gun.png" width="40px"/>
+      </div>
+
+
+      <ng-template #done>
+        <mat-icon matListIcon *ngIf="board.state == 3" class="votedornot">done</mat-icon>
+      </ng-template>
+
+      <mat-card style="display: none"></mat-card>
+      <div *ngIf="player.player === authService.name; else isknowncharacter">
+        <div [ngStyle]="{'border': (board.state > 0 && board.state < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar [ngClass]="(board.state > 0) ? board.secrets.character: 'player-circle-unknown'"></div>
+      </div>
+
+      <ng-template #isknowncharacter >
+        <div *ngIf="board.state && board.playerToCharacters &&
+          ((board.playerToCharacters[player.player] &&
+          board.playerToCharacters[player.player].ch == 'Ector')
+          || ((board.state==6 || board.state==7 || board.state==10 || board.state==14) &&
+          board.playerToCharacters[player.player])); else isgoodcharacter">
+          <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar class="{{board.playerToCharacters[player.player].ch}}"></div>
+        </div>
+
+        <ng-template #isgoodcharacter >
+          <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersWithGoodCharacter && board.playerSecrets.PlayersWithGoodCharacter.includes(player.player); else isbadcharacter">
+            <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar class="GenericBlue"></div>
+          </div>
+
+          <ng-template #isbadcharacter >
+            <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersWithBadCharacter && board.playerSecrets.PlayersWithBadCharacter.includes(player.player); else isuncoveredcharacter">
+              <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="GenericRed"></div>
+            </div>
+
+            <ng-template #isuncoveredcharacter >
+              <div *ngIf="board.state && board.playerSecrets != null && board.playerSecrets.PlayersWithUncoveredCharacters[player.player]; else issamegroup">
+                <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="{{board.playerSecrets.PlayersWithUncoveredCharacters[player.player]}}"></div>
+              </div>
+
+              <ng-template #issamegroup >
+                <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersWithSameLoyalty && board.playerSecrets.PlayersWithSameLoyalty.includes(player.player); else isnotsamegroup">
+                  <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar class="PurpleSeen"></div>
+                </div>
+
+                <ng-template #isnotsamegroup >
+                  <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersWithDifferentLoyalty  && board.playerSecrets.PlayersWithDifferentLoyalty .includes(player.player); else seen">
+                    <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class='GreenSeen'></div>
+                  </div>
+
+                  <ng-template #seen >
+                    <div *ngIf="board.playerSecrets != null && board.playerSecrets.Seen === player.player; else seen2">
+                      <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="PurpleSeen"></div>
+                    </div>
+
+                    <ng-template #seen2 >
+                      <div *ngIf="board.playerSecrets != null && board.playerSecrets.Seen2 === player.player; else playersee">
+                        <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="GreenSeen"></div>
+                      </div>
+
+                      <ng-template #playersee >
+                        <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersSee == player.player; else playersee2">
+                          <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="PurpleSee"></div>
+                        </div>
+
+                        <ng-template #playersee2 >
+                          <div *ngIf="board.playerSecrets != null && board.playerSecrets.PlayersSee2 === player.player; else other">
+                            <div [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '3px solid rgb(255, 196, 0)' : ''}" mat-card-avatar  class="GreenSee"></div>
+                          </div>
+
+                          <ng-template #other >
+                            <div mat-card-avatar *ngIf="player.player !== authService.name"  [ngStyle]="{'border': (board.state > 0 && board.state  < 4 && board.suggester==player.player) ? '5px solid rgb(255, 196, 0)' : ''}" class="player-circle-unknown">?</div>
+                          </ng-template>
+
+                        </ng-template>
+                      </ng-template>
+                    </ng-template>
+                  </ng-template>
+                </ng-template>
+              </ng-template>
+            </ng-template>
+          </ng-template>
+        </ng-template>
+      </ng-template>
+
+
+
+
+
+
+
+      <div class="player-circle-name">{{player.player}}</div>
+    </div>
+
+    <app-quests-overview></app-quests-overview>
+  </div>
+</div>
