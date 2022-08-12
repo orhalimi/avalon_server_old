@@ -9,14 +9,15 @@ services:
       MONGO_INITDB_DATABASE: avalonDB
     ports:
       - '27017-27019:27017-27019'
-
+    networks:
+      - backend
 
   server:
     image: avalon:tiny
     tty: true
     stdin_open: true 
     build:
-      context: .
+      context: ./server/
       dockerfile: Dockerfile
     ports:
       - '12345:12345'
@@ -24,4 +25,25 @@ services:
       - 'mongo'
     environment:
       - MONGO_ADDRESS=mongo
+    networks:
+      - backend
+      - frontend
+  
+  client:
+    image: avalon-nginx:1.0.0
+    tty: true
+    stdin_open: true 
+    build:
+      context: ./client/
+      dockerfile: Dockerfile
+    ports:
+      - '8080:80'
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: false
+  backend:
+    external: false
 
