@@ -1,5 +1,5 @@
 FROM golang:1.18.5-alpine3.16 as BUILD
-COPY . .
+COPY ./server .
 
 RUN unset GOPATH && go build -o avalon  ./src/
 
