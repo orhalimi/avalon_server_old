@@ -10,7 +10,7 @@ const SAVE_LOCALSTORAGE = true;
 export class AuthService {
 
   public data: any;
-  API_URL = 'http://localhost:8080'; //3.121.195.232 52.57.227.87
+  API_URL = 'http://18.185.101.173'; //localhost
   // API_URL = 'http://3.121.195.232:12345'; //3.121.195.232 52.57.227.87
   TOKEN_KEY = 'token';
   NAME = 'name';
